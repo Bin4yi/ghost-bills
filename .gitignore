@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+*.db
+*.db-journal
+demo.csv
+node_modules/
+frontend/dist/
+assets/draft/
+assets_ghost_bills_meta/
+.env
+.DS_Store
