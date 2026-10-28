@@ -8,7 +8,7 @@ seed:
 	uv run python -m backend.seed_demo
 
 api:
-	uv run uvicorn backend.app:app --reload --port 8000
+	uv run uvicorn backend.app:app --reload --port 8765
 
 web:
 	cd frontend && npm run dev

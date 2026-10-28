@@ -128,7 +128,8 @@ def template(g: Ghost) -> dict[str, Any]:
 
 
 def enrich_one(g: Ghost, llm: LLM = chat_json) -> tuple[dict[str, Any], str, float]:
-    """Return (fields, text_source, seconds). Two rejections -> template text."""
+    """Return (fields, text_source, seconds). Two rejections -> template text.
+    If Ollama cannot be reached the source is "offline" (template text, not cached)."""
     t0 = time.perf_counter()
     reasons: list[str] | None = None
     for _ in range(2):
@@ -136,7 +137,7 @@ def enrich_one(g: Ghost, llm: LLM = chat_json) -> tuple[dict[str, Any], str, flo
             out = llm(SYSTEM, user_prompt(g, reasons), SCHEMA)
         except OllamaError as err:
             log.warning("enrich %s: %s", g.id, err)
-            break
+            return template(g), "offline", time.perf_counter() - t0
         reasons = grounding.check(out, facts_for(g), g.merchant_keys)
         if not reasons:
             return out, "gemma", time.perf_counter() - t0
@@ -179,6 +180,9 @@ def enrich_all(ghosts: list[Ghost], series: list[Series], llm: LLM = chat_json,
         if cached(g) and not force:
             continue
         fields, source, secs = enrich_one(g, llm)
+        if source == "offline":
+            return {"enriched": done, "seconds": [round(s, 2) for s in seconds],
+                    "error": "Gemma is not reachable. Ghosts keep their template text."}
         db.put("enrich_cache", "key", cache_key(g), json=json.dumps(fields),
                text_source=source, seconds=secs)
         if source == "gemma":

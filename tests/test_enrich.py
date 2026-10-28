@@ -109,7 +109,10 @@ def test_ollama_down_gives_template() -> None:
     def down(*_: Any) -> dict[str, Any]:
         raise OllamaError("not running")
     _, source, _ = enrich.enrich_one(GHOST, down)
-    assert source == "template"
+    assert source == "offline"
+    result = enrich.enrich_all([GHOST], [], down)
+    assert result["enriched"] == 0 and "error" in result
+    assert enrich.cached(GHOST) is None  # retried once Gemma is back
 
 
 def test_templates_pass_grounding_for_every_type() -> None:
