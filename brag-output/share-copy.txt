@@ -1,0 +1,1 @@
+I found $466.76 a year haunting one bank statement, and the statement never left my laptop. Ghost Bills: plain Python finds the forgotten subscriptions, Gemma (running locally) explains them, and you decide what to cancel. Happy haunting. 🎃
