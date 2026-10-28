@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from backend import db, settings
+from backend.agent import graph
 from backend.detect import config
 from backend.detect.scan import run_scan
 from backend.importer import csv_import, service
@@ -95,6 +96,16 @@ def enrich_route(force: bool = False) -> dict:
 @app.get("/api/enrich/stats")
 def enrich_stats() -> dict:
     return enrich.stats()
+
+
+class AskBody(BaseModel):
+    question: str
+
+
+@app.post("/api/ask")
+def ask_route(body: AskBody) -> dict:
+    """Ask Penny. Read-only: the agent can look, never change or send anything."""
+    return graph.ask(body.question[:500])
 
 
 class CategoryBody(BaseModel):

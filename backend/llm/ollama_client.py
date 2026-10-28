@@ -33,7 +33,7 @@ def ping() -> dict[str, Any]:
 
 
 def chat_json(system: str, user: str, schema: dict[str, Any],
-              timeout: float = 60.0) -> dict[str, Any]:
+              timeout: float = settings.LLM_TIMEOUT) -> dict[str, Any]:
     """Ask the model for JSON that follows `schema` (Ollama structured output)."""
     body = {
         "model": settings.OLLAMA_MODEL,
