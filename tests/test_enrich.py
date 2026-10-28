@@ -130,10 +130,33 @@ def test_cache_and_suggestion() -> None:
     out = with_(display_name="NightOwl VPN", category_suggestion="vpn",
                 story="A spirit raised its price.", explain="The price went up by $3.00.",
                 email_subject="Please cancel NightOwl VPN",
-                email_body="Please cancel NightOwl VPN. [YOUR NAME] [YOUR ACCOUNT EMAIL]")
+                email_body="Please cancel my NightOwl VPN subscription. [YOUR NAME] [YOUR ACCOUNT EMAIL]")
     llm = FakeLLM(out)
     assert enrich.enrich_all([g], [s], llm)["enriched"] == 1
     assert enrich.enrich_all([g], [s], llm)["enriched"] == 0  # cached, no new call
     assert db.get_row("categories", "merchant_key", "NIGHTOWL VPN")["source"] == "suggested"
     assert enrich.apply_cached_or_template([g]) == 0
     assert g.text_source == "gemma" and g.display_name == "NightOwl VPN"
+
+
+def test_email_must_come_from_the_user() -> None:
+    company = with_(email_body="We noticed a price rise. Would you like me to cancel your "
+                               "subscription? [YOUR NAME] [YOUR ACCOUNT EMAIL]")
+    assert any("written BY the user" in r for r in check(company))
+    g = enrich.apply(GHOST.model_copy(), company, "gemma")
+    assert g.cancel_email is not None
+    assert g.cancel_email.body.startswith("Hello,") and "Please cancel my Moonbeam Music" in g.cancel_email.body
+
+
+def test_display_name_only_from_merchant_words() -> None:
+    g = GHOST.model_copy(update={"type": "sleepy", "merchant_keys": ["CLOUDCRATE"],
+                                 "display_name": "Cloudcrate"})
+    assert enrich.apply(g, with_(display_name="Cloudcrate Dreams"), "gemma").display_name == "Cloudcrate"
+    assert enrich.apply(g, with_(display_name="CloudCrate"), "gemma").display_name == "CloudCrate"
+
+
+def test_twins_keep_both_names() -> None:
+    g = GHOST.model_copy(update={"type": "twins", "merchant_keys": ["MOONBEAM MUSIC", "ECHOTUNES"],
+                                 "display_name": "Moonbeam Music & Echotunes"})
+    out = enrich.apply(g, with_(display_name="Moonbeam Music"), "gemma")
+    assert out.display_name == "Moonbeam Music & Echotunes"

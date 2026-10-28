@@ -114,4 +114,27 @@ def check(out: dict[str, Any], facts: list[str], merchant_keys: list[str]) -> li
         reasons.append("email body must contain [YOUR NAME] and [YOUR ACCOUNT EMAIL]")
     if not _shares_word(out.get("display_name", ""), merchant_keys):
         reasons.append("display_name must share a word with the merchant name")
+    if not email_from_user(body):
+        reasons.append("the email must be written BY the user TO the company, "
+                       "starting with 'Please cancel my ... subscription'")
     return reasons
+
+
+_FROM_USER = re.compile(r"\b(please cancel my|i would like to cancel my|i want to cancel my)\b", re.I)
+_FROM_COMPANY = re.compile(r"\b(would you like me to|we noticed|we've noticed|we’ve noticed|"
+                           r"i've noticed|i’ve noticed|dear user|we want to help)\b", re.I)
+
+
+def email_from_user(body: str) -> bool:
+    """The cancel email is sent by the user, so it must ask to cancel *my* plan,
+    and must not read like the company (or the app) writing to the user."""
+    return bool(_FROM_USER.search(body)) and not _FROM_COMPANY.search(body)
+
+
+def name_only_from_merchant(name: str, merchant_keys: list[str]) -> bool:
+    """Every word of the display name must come from the merchant name
+    ("CloudCrate" is fine, "Cloudcrate Dreams" is not)."""
+    key_words = {w.lower() for k in merchant_keys for w in re.findall(r"[A-Za-z0-9]+", k)}
+    joined = {"".join(re.findall(r"[a-z0-9]+", k.lower())) for k in merchant_keys}
+    words_ = re.findall(r"[A-Za-z0-9]+", name)
+    return bool(words_) and all(w.lower() in key_words or w.lower() in joined for w in words_)

@@ -57,9 +57,10 @@ Rules:
 - story: one seance-style line, max 20 words.
 - epitaph: one gentle line for a gravestone, max 12 words, no numbers.
 - explain: 2-3 short sentences, max 60 words, why this matters.
-- cancel_email: polite and short (max 120 words). Ask to cancel the subscription
-  and to confirm by email. Sign with [YOUR NAME] and [YOUR ACCOUNT EMAIL].
-  No links, no phone numbers."""
+- cancel_email: the user sends this email TO the company. Write it as the user.
+  Start the body with "Hello," then "Please cancel my <service> subscription".
+  Ask them to confirm by email. Polite and short (max 120 words). Sign with
+  [YOUR NAME] and [YOUR ACCOUNT EMAIL]. No links, no phone numbers."""
 
 TYPE_WORDS = {
     "poltergeist": "Poltergeist: the price went up without the user noticing.",
@@ -146,11 +147,19 @@ def enrich_one(g: Ghost, llm: LLM = chat_json) -> tuple[dict[str, Any], str, flo
 
 
 def apply(g: Ghost, fields: dict[str, Any], source: str) -> Ghost:
-    g.display_name = fields.get("display_name") or g.display_name
+    # Names come from code unless Gemma only tidied the merchant's own words.
+    # Twin ghosts always keep the code name, so both services stay visible.
+    name = fields.get("display_name")
+    if g.type != "twins" and name and grounding.name_only_from_merchant(name, g.merchant_keys):
+        g.display_name = name
     g.story = fields["story"]
     g.epitaph = fields["epitaph"]
     g.explain = fields["explain"]
-    g.cancel_email = CancelEmail(**fields["cancel_email"])
+    # The user sends this email, so it must be written as the user; otherwise use the plain one.
+    email = fields["cancel_email"]
+    if not grounding.email_from_user(email.get("body", "")):
+        email = template(g)["cancel_email"]
+    g.cancel_email = CancelEmail(**email)
     g.text_source = source  # type: ignore[assignment]
     return g
 
