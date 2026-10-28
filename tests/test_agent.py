@@ -53,6 +53,17 @@ def test_music_question(ctx) -> None:
     assert out["tools_used"] == [{"tool": "list_subscriptions", "args": {"category": "music"}}]
 
 
+def test_missing_category_is_filled_from_the_question(ctx) -> None:
+    # Gemma picks the right tool but forgets the category: code adds it.
+    llm = Script([tool("list_subscriptions")], ["You spend $287.76 per year on music."])
+    out = graph.ask("How much do I spend on music per year?", llm, ctx)
+    assert out["tools_used"] == [{"tool": "list_subscriptions", "args": {"category": "music"}}]
+    assert out["text"] == "You spend $287.76 per year on music."
+    # No category word in the question: nothing is added.
+    llm = Script([tool("list_subscriptions")], ["Total for 8 subscriptions."])
+    assert graph.ask("What do I pay for?", llm, ctx)["tools_used"][0]["args"] == {}
+
+
 def test_invented_number_is_blocked(ctx) -> None:
     llm = Script([tool("list_subscriptions", category="music")],
                  ["You spend $300.00 a year.", "Maybe $310.00."])

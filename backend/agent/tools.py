@@ -147,6 +147,17 @@ TOOL_HELP = """\
 - compare(merchant_a, merchant_b): two subscriptions side by side."""
 
 
+def fill_category(ctx: Context, name: str, args: dict[str, Any], question: str) -> dict[str, Any]:
+    """Small models often drop the category ("how much on music?" -> no category).
+    If the question names a category we know, code fills it in."""
+    if name not in ("list_subscriptions", "total_spend") or args.get("category"):
+        return args
+    words = {w.strip("?.,!").lower() for w in question.split()}
+    known = sorted({s.category for s in ctx.scan.series if s.category})
+    hit = next((c for c in known if c in words), None)
+    return {**args, "category": hit} if hit else args
+
+
 def run(ctx: Context, name: str, args: dict[str, Any]) -> dict[str, Any]:
     fn = TOOLS[name]
     clean = {k: v for k, v in (args or {}).items()

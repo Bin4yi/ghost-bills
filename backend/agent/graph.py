@@ -133,9 +133,9 @@ def build(ctx: tools.Context, llm: LLM = chat_json):
             if bad > 1:
                 return {"bad_tool": bad, "pending": None, "answer": COULD_NOT, "done": True}
             return {"bad_tool": bad, "pending": None}
-        result = tools.run(ctx, name, call.get("args", {}))
-        steps = [*state.get("steps", []), {"tool": name, "args": call.get("args", {}),
-                                           "result": result}]
+        args = tools.fill_category(ctx, name, dict(call.get("args") or {}), state["question"])
+        result = tools.run(ctx, name, args)
+        steps = [*state.get("steps", []), {"tool": name, "args": args, "result": result}]
         return {"steps": steps, "pending": None}
 
     def answer(state: State) -> State:
