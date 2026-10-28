@@ -12,6 +12,7 @@ from backend import db, settings
 from backend.detect import config
 from backend.detect.scan import run_scan
 from backend.importer import csv_import, service
+from backend.llm import enrich, ollama_client
 from backend.models import ColumnMapping, ImportPreview
 
 app = FastAPI(title="Ghost Bills")
@@ -68,7 +69,44 @@ def scan_route() -> dict:
         **r.totals(),
         "upcoming": [u | {"date": u["date"].isoformat()} for u in r.upcoming],
         "open_questions": sum(1 for q in r.questions if q.answer is None),
+        "pending_enrich": r.pending_enrich,
     }
+
+
+# --- Gemma ------------------------------------------------------------------
+
+@app.get("/api/llm/status")
+def llm_status() -> dict:
+    try:
+        return ollama_client.ping()
+    except ollama_client.OllamaError as err:
+        return {"ok": False, "model": settings.OLLAMA_MODEL, "error": str(err),
+                "fix": f"ollama pull {settings.OLLAMA_MODEL}"}
+
+
+@app.post("/api/enrich")
+def enrich_route(force: bool = False) -> dict:
+    r = run_scan()
+    result = enrich.enrich_all(r.ghosts, r.series, force=force)
+    result["categories_suggested"] = enrich.suggest_categories(r.series)
+    return result
+
+
+@app.get("/api/enrich/stats")
+def enrich_stats() -> dict:
+    return enrich.stats()
+
+
+class CategoryBody(BaseModel):
+    category: str
+
+
+@app.post("/api/series/{key:path}/category")
+def category_route(key: str, body: CategoryBody) -> dict:
+    """The user confirms (or changes) a category. Twin rules use it at once."""
+    db.put("categories", "merchant_key", key, category=body.category.strip().lower(),
+           source="user")
+    return {"ok": True}
 
 
 @app.get("/api/series")

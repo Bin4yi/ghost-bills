@@ -12,6 +12,7 @@ from backend.detect import questions as Q
 from backend.detect.rules import all_ghosts
 from backend.detect.series import find_series
 from backend.importer import csv_import
+from backend.llm import enrich
 from backend.models import Ghost, Question, Series, Transaction
 from backend.normalize import display_name
 
@@ -24,6 +25,7 @@ class ScanResult:
     ghosts: list[Ghost]
     questions: list[Question]
     upcoming: list[dict] = field(default_factory=list)
+    pending_enrich: int = 0
 
     @property
     def counted(self) -> list[Ghost]:
@@ -79,10 +81,11 @@ def run_scan(txs: list[Transaction] | None = None, today: date | None = None) ->
             g.waiting = g.waiting and answer != "a"
         ghosts.append(g)
     _apply_status(ghosts)
+    pending = enrich.apply_cached_or_template(ghosts)
     questions = Q.with_answers(questions, answers)
     currency = txs[-1].currency if txs else "USD"
     return ScanResult(today, currency, series, ghosts, questions,
-                      upcoming(series, ghosts, today))
+                      upcoming(series, ghosts, today), pending)
 
 
 def _date_questions() -> list[Question]:
