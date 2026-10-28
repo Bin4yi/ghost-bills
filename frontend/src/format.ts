@@ -26,10 +26,10 @@ export function daysBetween(fromIso: string, toIso: string): number {
 }
 
 export const TYPES: Record<GhostType, { word: string; color: string; meaning: string }> = {
-  poltergeist: { word: 'Poltergeist', color: '#FF7A6B', meaning: 'Price went up' },
-  sleepy: { word: 'Sleepy Ghost', color: '#7FE3C4', meaning: 'Yearly plan wakes soon' },
-  shapeshifter: { word: 'Shapeshifter', color: '#F2B24A', meaning: 'Free trial turned paid' },
-  twins: { word: 'Twin Ghosts', color: '#C4B3F7', meaning: 'Two doing one job' },
+  poltergeist: { word: 'Poltergeist', color: '#A3271F', meaning: 'Price went up' },
+  sleepy: { word: 'Sleepy Ghost', color: '#2F5D73', meaning: 'Yearly plan wakes soon' },
+  shapeshifter: { word: 'Shapeshifter', color: '#7A4F00', meaning: 'Free trial turned paid' },
+  twins: { word: 'Twin Ghosts', color: '#5B3A6E', meaning: 'Two doing one job' },
 }
 
 export const TYPE_ORDER: GhostType[] = ['poltergeist', 'sleepy', 'shapeshifter', 'twins']

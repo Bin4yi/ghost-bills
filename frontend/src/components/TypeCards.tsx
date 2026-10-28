@@ -20,7 +20,7 @@ export function TypeCards({ ghosts, currency, filter, onFilter }: Props) {
           <button
             key={t}
             className={`card type-card ${on ? 'on' : ''}`}
-            style={{ '--type': TYPES[t].color } as React.CSSProperties}
+            style={{ '--type': `var(--${t})` } as React.CSSProperties}
             aria-pressed={on}
             onClick={() => onFilter(on ? null : t)}
           >

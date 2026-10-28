@@ -1,0 +1,45 @@
+/* Haunted Ledger: Penny's old account book. All colours, fonts and radii live here. */
+:root {
+  /* Paper and ink */
+  --paper: #f3e9d2; /* page background */
+  --paper-card: #f8f0dc; /* cards / ledger pages */
+  --paper-dark: #e8dbbe; /* insets, user chat bubble, hover */
+  --rule: #d9c9a3; /* ruled lines, borders */
+  --rule-strong: #c9b48a;
+  --ink: #2b2118; /* main text, primary buttons */
+  --ink-muted: #6b5b45; /* secondary text: 5.4:1 on paper, 4.8:1 on paper-dark */
+  --red-ink: #a3271f; /* money lost, Poltergeist, margin line, focus ring */
+  --green-ink: #2e6b3f; /* money saved */
+
+  /* Ghost type inks: always shown WITH the type word */
+  --poltergeist: #a3271f;
+  --shapeshifter: #7a4f00; /* darkened from #8A5A00: 4.3:1 on paper-dark failed */
+  --twins: #5b3a6e;
+  --sleepy: #2f5d73;
+
+  /* Gravestones: grey stone, with darker inks so text stays >= 4.5:1 on it */
+  --stone: #cfc7b8;
+  --stone-red: #8e1f18;
+  --stone-green: #245733;
+  --stone-muted: #4f4130;
+
+  /* Séance mode only: a dark candle-lit parlour */
+  --parlour-bg: #24140f;
+  --parlour-card: #3a2219;
+  --brass: #c9a24b;
+  --parchment: #eadbc0;
+
+  /* Shape */
+  --radius-card: 4px;
+  --radius-btn: 2px;
+  --shadow-card: 0 1px 0 var(--rule-strong);
+  --ruled-line: 32px;
+  --margin-left: 56px;
+
+  /* Type */
+  --font-display: 'IM Fell English', Georgia, serif;
+  --font-body: 'EB Garamond', Georgia, serif;
+  --font-mono: 'Courier Prime', 'Courier New', monospace;
+  --font-size-base: 17px;
+  --line-height: 1.5;
+}

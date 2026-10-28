@@ -26,15 +26,17 @@ export function GhostList({ ghosts, selected, onSelect }: Props) {
               {g.waiting && <span className="waiting">waiting for your answer</span>}
               {g.status === 'kept' && <span className="kept-tag">Kept</span>}
             </span>
-            <span className="ghost-name">{g.display_name}</span>
-            <span className="muted small line">{g.story ?? g.evidence[0]}</span>
-            <span className="ghost-row-bottom">
+            <span className="ghost-row-main">
+              <span className="ghost-name">{g.display_name}</span>
               <span className="mono money">
                 {money(g.yearly_cents, g.currency)}
                 <span className="muted small"> /yr</span>
               </span>
-              {g.next_date && <span className="muted small">Next: {day(g.next_date)}</span>}
             </span>
+            <span className="line">{g.story ?? g.evidence[0]}</span>
+            {g.next_date && (
+              <span className="mono muted small next">Next: {day(g.next_date)}</span>
+            )}
           </button>
         </li>
       ))}

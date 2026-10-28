@@ -156,10 +156,10 @@ export function ImportDialog({ onClose, onDone }: Props) {
         </>
       )}
       <div className="row end">
-        <button className="btn" onClick={() => ref.current?.close()}>
+        <button className="btn btn-secondary" onClick={() => ref.current?.close()}>
           Cancel
         </button>
-        <button className="btn btn-action" disabled={!preview || busy} onClick={commit}>
+        <button className="btn btn-primary" disabled={!preview || busy} onClick={commit}>
           {busy ? 'Working…' : 'Import'}
         </button>
       </div>

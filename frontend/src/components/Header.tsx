@@ -6,13 +6,13 @@ export function Header({ onImport }: { onImport: () => void }) {
       <div className="brand">
         <Mascot name="logo_mark" size={48} />
         <h1 className="logo">
-          Ghost <span className="logo-bills">Bills</span>
+          Ghost <em className="logo-bills">Bills</em>
         </h1>
       </div>
       <p className="lock-pill">
         <span aria-hidden="true">🔒</span> Your bank data stays on this laptop.
       </p>
-      <button className="btn btn-action" onClick={onImport}>
+      <button className="btn btn-primary" onClick={onImport}>
         Import statement
       </button>
     </header>

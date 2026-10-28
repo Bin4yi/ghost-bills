@@ -41,7 +41,7 @@ export function AskPenny({ llmOk }: { llmOk: boolean }) {
       <div className="ask-head">
         <Mascot name={busy ? 'penny_thinking' : 'penny_base'} size={72} />
         <div>
-          <h2 id="ask-title">Ask Penny</h2>
+          <h2 id="ask-title" className="section-title">Ask Penny</h2>
           <p className="muted small">
             Penny looks things up with read-only tools. Python does all the math.
           </p>
@@ -95,7 +95,7 @@ export function AskPenny({ llmOk }: { llmOk: boolean }) {
           placeholder="Ask about your subscriptions…"
           disabled={!llmOk}
         />
-        <button className="btn btn-action" disabled={busy || !llmOk || !text.trim()}>
+        <button className="btn btn-primary" disabled={busy || !llmOk || !text.trim()}>
           Ask
         </button>
       </form>

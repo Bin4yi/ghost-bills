@@ -14,7 +14,7 @@ export function QuestionCards({ questions, onAnswer }: Props) {
       <div className="questions-head">
         <Mascot name="penny_question" size={64} />
         <div>
-          <h2 id="questions-title">
+          <h2 id="questions-title" className="section-title">
             {open > 0
               ? `Penny has ${open} question${open === 1 ? '' : 's'}`
               : 'Penny remembers your answers'}
@@ -30,10 +30,10 @@ export function QuestionCards({ questions, onAnswer }: Props) {
             <p className="muted small">{q.why}</p>
             {q.answer === null ? (
               <div className="row">
-                <button className="btn btn-action" onClick={() => onAnswer(q.id, 'a')}>
+                <button className="btn btn-primary" onClick={() => onAnswer(q.id, 'a')}>
                   {q.choice_a}
                 </button>
-                <button className="btn" onClick={() => onAnswer(q.id, 'b')}>
+                <button className="btn btn-secondary" onClick={() => onAnswer(q.id, 'b')}>
                   {q.choice_b}
                 </button>
               </div>
@@ -43,7 +43,7 @@ export function QuestionCards({ questions, onAnswer }: Props) {
                   You said: <strong>{q.answer === 'a' ? q.choice_a : q.choice_b}</strong>. I will
                   remember.
                 </p>
-                <button className="btn btn-small" onClick={() => onAnswer(q.id, null)}>
+                <button className="btn btn-secondary btn-small" onClick={() => onAnswer(q.id, null)}>
                   Change
                 </button>
               </div>

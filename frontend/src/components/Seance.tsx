@@ -62,11 +62,11 @@ export function Seance({ ghosts, total, currency, onClose }: Props) {
         )}
         <div className="row center">
           {!done && (
-            <button ref={nextRef} className="btn btn-action" onClick={() => setI(i + 1)}>
+            <button ref={nextRef} className="btn btn-primary" onClick={() => setI(i + 1)}>
               Call the next spirit
             </button>
           )}
-          <button ref={done ? nextRef : undefined} className="btn" onClick={onClose}>
+          <button ref={done ? nextRef : undefined} className="btn btn-secondary" onClick={onClose}>
             End séance
           </button>
         </div>

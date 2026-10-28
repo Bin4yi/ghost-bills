@@ -4,6 +4,26 @@ import { money } from '../format'
 import { GHOST_ART, Mascot } from '../Mascot'
 import { TypePill } from './TypePill'
 
+// Amounts and dates in a proof line, so they can be set in the ledger's typewriter face.
+const FIGURES =
+  /([$€£]?-?\d[\d,]*(?:\.\d+)?(?:\s(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s\d{4})?|(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s\d{4})/
+
+function Figures({ text }: { text: string }) {
+  return (
+    <>
+      {text.split(FIGURES).map((part, i) =>
+        i % 2 ? (
+          <span key={i} className="mono">
+            {part}
+          </span>
+        ) : (
+          part
+        ),
+      )}
+    </>
+  )
+}
+
 interface Props {
   ghost: Ghost | null
   onStatus: (id: string, status: Status) => void
@@ -27,7 +47,9 @@ export function GhostDetail({ ghost, onStatus }: Props) {
         <Mascot name={GHOST_ART[ghost.type]} size={112} />
         <div>
           <TypePill type={ghost.type} />
-          <h2 id="detail-title">{ghost.display_name}</h2>
+          <h2 id="detail-title" className={ghost.status === 'kept' ? 'struck' : ''}>
+            {ghost.display_name}
+          </h2>
           <p className="mono big-money">
             {money(ghost.yearly_cents, ghost.currency)}
             <span className="muted small"> per year</span>
@@ -49,8 +71,8 @@ export function GhostDetail({ ghost, onStatus }: Props) {
       <h3>Proof (found by code, not AI)</h3>
       <ul className="proof">
         {ghost.evidence.map((e) => (
-          <li key={e} className="mono-ish">
-            {e}
+          <li key={e}>
+            <Figures text={e} />
           </li>
         ))}
       </ul>
@@ -77,7 +99,7 @@ export function GhostDetail({ ghost, onStatus }: Props) {
             support address. Ghost Bills never sends anything for you.
           </p>
           <div className="row">
-            <button className="btn" onClick={copy}>
+            <button className="btn btn-secondary" onClick={copy}>
               {copied ? 'Copied ✓' : 'Copy email'}
             </button>
           </div>
@@ -86,12 +108,12 @@ export function GhostDetail({ ghost, onStatus }: Props) {
 
       <div className="row decide">
         <button
-          className="btn"
+          className="btn btn-secondary"
           onClick={() => onStatus(ghost.id, ghost.status === 'kept' ? 'active' : 'kept')}
         >
           {ghost.status === 'kept' ? 'Undo keep' : 'Keep it'}
         </button>
-        <button className="btn btn-action" onClick={() => onStatus(ghost.id, 'cancelled')}>
+        <button className="btn btn-primary" onClick={() => onStatus(ghost.id, 'cancelled')}>
           I cancelled it
         </button>
       </div>

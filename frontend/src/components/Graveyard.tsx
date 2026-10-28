@@ -1,6 +1,5 @@
 import type { Ghost } from '../api'
 import { day, money } from '../format'
-import { artUrl, Mascot } from '../Mascot'
 
 interface Props {
   ghosts: Ghost[]
@@ -11,17 +10,15 @@ interface Props {
 }
 
 export function Graveyard({ ghosts, saved, currency, fresh, onUndo }: Props) {
-  const strip = artUrl('graveyard_strip', 1024)
   return (
-    <section
-      className="graveyard"
-      aria-labelledby="graveyard-title"
-      style={strip ? { backgroundImage: `url(${strip})` } : undefined}
-    >
+    <section className="card graveyard" aria-labelledby="graveyard-title">
       <div className="graveyard-head">
-        <h2 id="graveyard-title">The Graveyard</h2>
-        <p>
-          Saved so far: <span className="mono saved">{money(saved, currency)}</span> per year
+        <h2 id="graveyard-title" className="section-title">
+          Laid to Rest
+        </h2>
+        <p className="saved-line">
+          <span className="label">Saved so far</span>{' '}
+          <span className="mono saved">{money(saved, currency)}</span> per year
         </p>
       </div>
       {ghosts.length === 0 ? (
@@ -32,14 +29,14 @@ export function Graveyard({ ghosts, saved, currency, fresh, onUndo }: Props) {
         <ul className="stones">
           {ghosts.map((g) => (
             <li key={g.id} className={`stone ${fresh === g.id ? 'fresh' : ''}`}>
-              <Mascot name="gravestone" size={128} className="stone-art" />
-              <div className="stone-text">
-                <strong>{g.display_name}</strong>
-                <span className="small">Laid to rest {day(g.cancelled_at)}</span>
-                <em className="small">{g.epitaph}</em>
-                <span className="mono saved small">+{money(g.yearly_cents, g.currency)}/yr</span>
+              <div className="stone-face">
+                <span className="stamp stamp-rest">Laid to rest</span>
+                <strong className="stone-name">{g.display_name}</strong>
+                <span className="small stone-date">Laid to rest {day(g.cancelled_at)}</span>
+                <em className="stone-epitaph">{g.epitaph}</em>
+                <span className="mono stone-saved">+{money(g.yearly_cents, g.currency)}/yr</span>
               </div>
-              <button className="btn btn-small" onClick={() => onUndo(g.id)}>
+              <button className="btn btn-secondary btn-small" onClick={() => onUndo(g.id)}>
                 Undo
               </button>
             </li>
