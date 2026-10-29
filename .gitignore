@@ -13,3 +13,5 @@ assets_ghost_bills_meta/
 .DS_Store
 brag-output/work/
 brag-output/dev-post/
+CLAUDE.md
+.claude/
