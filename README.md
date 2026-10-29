@@ -1,5 +1,7 @@
 # Ghost Bills 👻💸
 
+![Ghost Bills: Penny the cat and four ghosts hiding in a wallet](docs/images/cover.png)
+
 **Forgotten subscriptions are ghosts in your bank account.** Ghost Bills reads your
 bank statement (CSV), finds the ghosts, shows what they cost you per year, and
 writes a polite cancel email. **Your bank data never leaves your laptop.**
@@ -9,14 +11,26 @@ Gemma runs locally in Ollama, and the app works with Wi-Fi off.
 > Plain Python finds every ghost and does every sum. Gemma only writes the
 > friendly words. You decide what to keep and what to cancel.
 
+## Watch the 3½-minute tour
+
+[![Watch the Ghost Bills tour on YouTube](docs/images/video-thumbnail.jpg)](https://youtu.be/uTmU83j69yw)
+
+From importing a bank CSV to laying a ghost to rest, in the real app.
+
+## The four ghosts
+
+![Poltergeist, Sleepy Ghost, Shapeshifter and Twin Ghosts](docs/images/four-ghosts.jpg)
+
 | Ghost | What it is | Demo example |
 | --- | --- | --- |
-| 😴 **Sleepy Ghost** | A yearly plan that charges again soon | CloudCrate renews in 9 days for $119.00 |
 | 💥 **Poltergeist** | The price went up without you noticing | Moonbeam Music: $9.99 → $12.99 |
+| 😴 **Sleepy Ghost** | A yearly plan that charges again soon | CloudCrate renews in 9 days for $119.00 |
 | 🎭 **Shapeshifter** | A free trial that turned into a paid plan | PixelPal Pro: $0.00, now $14.99/month |
 | 👯 **Twin Ghosts** | Two subscriptions that do the same job | Moonbeam Music + EchoTunes, both music |
 
 On the demo statement the ghosts cost **$466.76 per year**.
+
+![The Ghost Bills home screen: the yearly total and the four ghost types](docs/images/home.jpg)
 
 ## Quick start (3 steps)
 
@@ -33,6 +47,39 @@ Open <http://localhost:5173>. (`make dev` does step 3 too.)
 
 Without Ollama the app still finds every ghost and does all the money math. It
 uses simple template text instead of Gemma's words and shows the fix command.
+
+## How it works, in five steps
+
+**1. Import your bank's CSV.** Ghost Bills guesses the date, description and amount
+columns. You check them, and it remembers that bank's layout.
+
+<img src="docs/images/import.jpg" alt="The import dialog with the guessed columns and a preview" width="600">
+
+**2. Code finds the ghosts.** Plain Python looks for repeating charges and runs the
+four rules. Normal shopping, rent and tiny price changes are not flagged.
+
+**3. Check the proof.** Every ghost shows the real charges from your statement, found
+by code, not AI. Gemma explains why it matters, and writes a short cancel email.
+
+<img src="docs/images/proof.jpg" alt="Moonbeam Music: proof from the statement, Gemma's explanation and the cancel email" width="520">
+
+**4. Answer Penny.** When a rule isn't sure, Penny asks instead of guessing, and she
+remembers your answer.
+
+![Penny's question cards](docs/images/questions.jpg)
+
+**5. You decide.** Copy the email and send it yourself (the app never sends anything).
+Then click "I cancelled it", and the ghost is laid to rest.
+
+![The graveyard with a cancelled ghost and the money saved](docs/images/graveyard.jpg)
+
+**Extras:** see the charges coming in the next 30 days, ask Penny questions (the maths
+is done by code), or start the séance to meet your ghosts one by one.
+
+<p>
+  <img src="docs/images/ask-penny.jpg" alt="Ask Penny answering how much is spent on music" width="420">
+  <img src="docs/images/seance.jpg" alt="Séance mode" width="340">
+</p>
 
 Other commands: `make test` (or `uv run pytest -q`), `make seed` (reset the demo data).
 Settings: `OLLAMA_MODEL` (default `gemma3:4b`), `DEMO_TODAY` (default `2026-10-27`),
