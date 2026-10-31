@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { api, type GhostType, type LlmStatus, type Question, type Scan, type Series, type Status } from './api'
+import { api, type GhostType, type LlmStatus, type Me, type Question, type Scan, type Series, type Status } from './api'
 import { AskPenny } from './components/AskPenny'
 import { BigNumber } from './components/BigNumber'
 import { GhostDetail } from './components/GhostDetail'
@@ -19,6 +19,7 @@ export default function App() {
   const [series, setSeries] = useState<Series[]>([])
   const [questions, setQuestions] = useState<Question[]>([])
   const [llm, setLlm] = useState<LlmStatus | null>(null)
+  const [me, setMe] = useState<Me | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [filter, setFilter] = useState<GhostType | null>(null)
   const [selected, setSelected] = useState<string | null>(null)
@@ -64,6 +65,7 @@ export default function App() {
       ])
       setLlm(status)
       enrich(s, status)
+      api.me().then(setMe).catch(() => setMe(null))
     })()
   }, [refresh, enrich])
 
@@ -102,7 +104,7 @@ export default function App() {
       <a className="skip" href="#ghosts">
         Skip to ghosts
       </a>
-      <Header onImport={() => setImporting(true)} />
+      <Header me={me} onImport={() => setImporting(true)} />
 
       {llm && !llm.ok && (
         <div className="card notice" role="status">

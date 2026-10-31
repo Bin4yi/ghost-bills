@@ -24,3 +24,7 @@ dev = ["pytest>=8"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+filterwarnings = [
+    "ignore::pydantic.PydanticDeprecatedSince20",
+    "ignore:authlib.jose module is deprecated",
+]

@@ -1294,3 +1294,16 @@ th {
     transition: none !important;
   }
 }
+
+/* Login state in the header */
+.who {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+a.btn {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}

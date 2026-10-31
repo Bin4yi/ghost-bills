@@ -1,10 +1,16 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import pytest
 
-from backend import settings
+# Tests never read a developer's real .env and never talk to a real Auth0 tenant.
+os.environ["GHOST_NO_DOTENV"] = "1"
+for _key in ("AUTH0_DOMAIN", "AUTH0_CLIENT_ID", "AUTH0_CLIENT_SECRET", "SESSION_SECRET"):
+    os.environ.pop(_key, None)
+
+from backend import settings  # noqa: E402
 
 FIXTURES = Path(__file__).parent / "fixtures"
 

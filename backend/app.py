@@ -4,12 +4,14 @@ from __future__ import annotations
 
 from typing import Literal
 
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import FastAPI, File, HTTPException, Request, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from backend import db, settings
 from backend.agent import graph
+from backend.auth import web
+from backend.auth.config import load_settings
 from backend.detect import config
 from backend.detect.scan import run_scan
 from backend.importer import csv_import, service
@@ -23,11 +25,27 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+# Optional Auth0 login. Without settings nothing is mounted and the app stays local-only.
+web.install(app, load_settings())
 
 
 @app.get("/api/health")
 def health() -> dict:
     return {"ok": True, "model": settings.OLLAMA_MODEL}
+
+
+@app.get("/api/me")
+async def me(request: Request, response: Response) -> dict:
+    """Who is logged in. Never returns tokens."""
+    auth = request.app.state.auth_settings
+    if not auth.enabled:
+        return {"auth_enabled": False, "logged_in": False}
+    user = await web.current_user(request, response)
+    if not user:
+        return {"auth_enabled": True, "logged_in": False}
+    return {"auth_enabled": True, "logged_in": True,
+            "name": user.get("name") or user.get("nickname") or user.get("email") or "you",
+            "agents_ready": auth.agents_ready}
 
 
 # --- import ----------------------------------------------------------------

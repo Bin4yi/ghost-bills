@@ -168,7 +168,9 @@ Do these steps in the Auth0 Dashboard, in order:
    - `Ghost Bills Login`, identifier `https://ghost-bills.local/login`
    - `Ghost Bills Ledger`, identifier `https://ghost-bills.local/ledger`, permission `read:ghosts`
    - `Ghost Bills Courier`, identifier `https://ghost-bills.local/courier`, permission `send:cancel_email`
-   - On each API: Settings > **Allow Offline Access** off, token expiration short (300 seconds is enough).
+   - On `Ghost Bills Ledger` and `Ghost Bills Courier`: Settings > **Allow Offline
+     Access** off, and a short token expiration (300 seconds). `Ghost Bills Login`
+     can keep the default expiration.
 2. **Regular Web Application** `Ghost Bills Web` (Applications > Create Application):
    - Allowed Callback URLs: `http://localhost:5173/auth/callback`
    - Allowed Logout URLs: `http://localhost:5173`

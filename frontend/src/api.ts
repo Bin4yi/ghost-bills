@@ -101,6 +101,13 @@ export interface LlmStatus {
   fix?: string
 }
 
+export interface Me {
+  auth_enabled: boolean
+  logged_in: boolean
+  name?: string
+  agents_ready?: boolean
+}
+
 export interface AskResult {
   text: string
   tools_used: { tool: string; args: Record<string, unknown> }[]
@@ -135,6 +142,7 @@ export const api = {
   questions: () => call<Question[]>('/api/questions'),
   config: () => call<Record<string, unknown>>('/api/config'),
   llmStatus: () => call<LlmStatus>('/api/llm/status'),
+  me: () => call<Me>('/api/me'),
   enrich: () => post<{ enriched: number; seconds: number[] }>('/api/enrich'),
   answer: (id: string, choice: 'a' | 'b' | null) =>
     post(`/api/questions/${enc(id)}/answer`, { choice }),
