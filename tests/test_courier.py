@@ -318,3 +318,19 @@ def test_no_token_in_responses_audit_or_logs(logged_in, demo, caplog) -> None:
     assert "Please cancel my" not in rows and ADDRESS not in rows  # no body, domain only
     logging.getLogger("ghost_bills.test").warning("leak? %s", fa.penny_token())
     assert not JWT.search(caplog.text)
+
+
+def test_token_vault_refusal_is_explained(logged_in, demo) -> None:
+    from auth0_api_python import ApiError
+
+    async def refuse(*args, **kwargs):
+        raise ApiError("federated_connection_refresh_token_not_found",
+                       "Federated connection Refresh Token not found.", 401)
+
+    logged_in.gateway.token_vault = refuse
+    job = ask_for_approval()
+    approve(logged_in, job)
+    st = status(job["request_id"])
+    assert st["state"] == "error" and logged_in.gmail.sent == []
+    assert "Google token" in st["message"] and "refresh_token_not_found" in st["message"]
+    assert "refresh_token_not_found" in audit_row(job["request_id"])["note"]

@@ -61,6 +61,14 @@ def domain_of(address: str) -> str:
     return address.rsplit("@", 1)[-1].lower()
 
 
+def plain_error(err: Exception) -> str:
+    """Auth0/Gmail's own error code and message, never a token."""
+    from backend.auth.tokens import redact
+    code = getattr(err, "code", None) or type(err).__name__
+    message = getattr(err, "message", None) or str(err)
+    return redact(f"{code}: {message}")[:240]
+
+
 def iso(ts: float) -> str:
     return datetime.fromtimestamp(ts, timezone.utc).isoformat(timespec="seconds")
 
@@ -185,7 +193,7 @@ class Courier:
                 r = await client.post("/api/courier/send", json={"request_id": p.request_id},
                                       headers={"Authorization": f"Bearer {result['access_token']}"})
             if p.status not in FINAL:
-                self._end(p, "error", r.json().get("detail", "Courier could not send."))
+                self._end(p, "error", f"Not sent: {r.json().get('detail', 'Courier could not send.')}")
         except AgentsStopped:
             self._end(p, "stopped", MESSAGES["stopped"])
         except TokenError as err:
@@ -206,13 +214,18 @@ class Courier:
         if claims.get("sub") != p.user_sub:
             raise TokenError(403, "This token is for a different user.")
         # Token Vault: a short-lived Google token (Gmail send), used once and dropped.
-        vault = await rt.gateway.token_vault(s.courier_client_id, s.courier_client_secret,
-                                             p.penny_token, s.ledger_audience,
-                                             s.google_connection)
+        try:
+            vault = await rt.gateway.token_vault(s.courier_client_id, s.courier_client_secret,
+                                                 p.penny_token, s.ledger_audience,
+                                                 s.google_connection)
+        except Exception as err:
+            raise TokenError(502, f"Auth0 didn't give Courier a Google token ({plain_error(err)})") from err
         try:
             import asyncio
             message_id = await asyncio.to_thread(rt.gmail.send, vault["access_token"],
                                                  p.to_address, p.subject, p.body)
+        except Exception as err:
+            raise TokenError(502, f"Gmail didn't send it ({plain_error(err)})") from err
         finally:
             vault.clear()  # the Google token is gone
         self._end(p, "sent", MESSAGES["sent"], sent=True, gmail_message_id=message_id,
