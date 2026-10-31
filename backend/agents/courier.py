@@ -219,7 +219,8 @@ class Courier:
                                                  p.penny_token, s.ledger_audience,
                                                  s.google_connection)
         except Exception as err:
-            raise TokenError(502, f"Auth0 didn't give Courier a Google token ({plain_error(err)})") from err
+            raise TokenError(502, f"Auth0 didn't give Courier a Google token ({plain_error(err)}). "
+                                  "Press 'Connect Gmail' once, then try again") from err
         try:
             import asyncio
             message_id = await asyncio.to_thread(rt.gmail.send, vault["access_token"],

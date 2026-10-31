@@ -1439,3 +1439,10 @@ a.btn {
   font-style: italic;
   text-align: center;
 }
+
+.connect-gmail {
+  margin-top: 12px;
+  display: grid;
+  gap: 4px;
+  justify-items: start;
+}

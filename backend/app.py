@@ -72,7 +72,8 @@ async def me(request: Request, response: Response) -> dict:
         return {"auth_enabled": True, "logged_in": False}
     return {"auth_enabled": True, "logged_in": True,
             "name": user.get("name") or user.get("nickname") or user.get("email") or "you",
-            "agents_ready": auth.agents_ready}
+            "agents_ready": auth.agents_ready,
+            "connect_gmail_url": web.connect_gmail_url(auth)}
 
 
 # --- import ----------------------------------------------------------------

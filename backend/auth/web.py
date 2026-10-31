@@ -14,7 +14,10 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from backend.auth.config import AuthSettings
 
-LOGIN_SCOPE = "openid profile email"
+# offline_access: a refresh token, so the session can get a My Account API token
+# (Multi-Resource Refresh Token) for the one-time "Connect Gmail" step.
+LOGIN_SCOPE = "openid profile email offline_access"
+GMAIL_SEND_SCOPE = "https://www.googleapis.com/auth/gmail.send"
 
 
 def install(app: FastAPI, settings: AuthSettings) -> None:
@@ -35,6 +38,8 @@ def install(app: FastAPI, settings: AuthSettings) -> None:
         secret=settings.session_secret,
         audience=settings.login_audience or None,
         authorization_params={"scope": LOGIN_SCOPE},
+        # /auth/connect: Connected Accounts for Token Vault (stores your Google tokens).
+        mount_connected_account_routes=True,
     )
     app.state.config = config
     app.state.auth_client = AuthClient(config)
@@ -66,6 +71,13 @@ def add_clock_leeway(server_client: Any, seconds: int = CLOCK_LEEWAY_SECONDS) ->
         return jwt.decode(token, jwt.PyJWK.from_dict(key).key, **kwargs)
 
     server_client._verify_and_decode_jwt = verify_and_decode
+
+
+def connect_gmail_url(settings: AuthSettings) -> str:
+    """The one-time 'Connect Gmail' link (auth0-fastapi's Connected Accounts route)."""
+    from urllib.parse import urlencode
+    return "/auth/connect?" + urlencode({"connection": settings.google_connection,
+                                         "scopes": GMAIL_SEND_SCOPE, "returnTo": "/"})
 
 
 def store(request: Request, response: Response) -> dict[str, Any]:

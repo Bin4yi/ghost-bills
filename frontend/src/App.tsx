@@ -208,6 +208,7 @@ export default function App() {
             <AgentPanel
               refreshKey={agentRefresh}
               ghostNames={Object.fromEntries(scan.ghosts.map((g) => [g.id, g.display_name]))}
+              connectGmailUrl={me?.connect_gmail_url}
             />
           )}
           {me?.auth_enabled && !me.logged_in && (

@@ -106,6 +106,7 @@ export interface Me {
   logged_in: boolean
   name?: string
   agents_ready?: boolean
+  connect_gmail_url?: string
 }
 
 export interface CourierJob {

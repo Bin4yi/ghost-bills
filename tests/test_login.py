@@ -28,7 +28,12 @@ def test_login_routes_mount_when_configured() -> None:
 
     from auth0_fastapi.server.routes import router
     paths = {getattr(r, "path", None) for r in router.routes}
-    assert {"/auth/login", "/auth/callback", "/auth/logout"} <= paths
+    assert {"/auth/login", "/auth/callback", "/auth/logout", "/auth/connect"} <= paths
+    assert test_app.state.config.mount_connected_account_routes is True
+    assert "offline_access" in test_app.state.config.authorization_params["scope"]
+    url = web.connect_gmail_url(FAKE)
+    assert url.startswith("/auth/connect?connection=google-oauth2")
+    assert "gmail.send" in url and "returnTo=%2F" in url
     assert test_app.state.auth_client is not None
     # No session cookie: logged out, no error and no network call.
     assert TestClient(test_app).get("/me").json() == {"user": None}

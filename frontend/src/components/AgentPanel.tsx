@@ -73,10 +73,11 @@ function steps(row: AuditRow, name: string): string[] {
 interface Props {
   refreshKey: number
   ghostNames: Record<string, string>
+  connectGmailUrl?: string
 }
 
 /** "Who can do what right now", "Stop all agents" and "What Penny did". */
-export function AgentPanel({ refreshKey, ghostNames }: Props) {
+export function AgentPanel({ refreshKey, ghostNames, connectGmailUrl }: Props) {
   const [tokens, setTokens] = useState<AgentTokens | null>(null)
   const [rows, setRows] = useState<AuditRow[]>([])
   const [now, setNow] = useState(Date.now())
@@ -124,6 +125,18 @@ export function AgentPanel({ refreshKey, ghostNames }: Props) {
         <p className="muted small">
           Decoded claims only. Raw tokens stay in the server's memory and are never shown.
         </p>
+        {connectGmailUrl && (
+          <div className="connect-gmail">
+            {/* Full page: Auth0's Connected Accounts flow stores your Google token in Token Vault. */}
+            <a className="btn btn-secondary" href={connectGmailUrl}>
+              Connect Gmail
+            </a>
+            <p className="muted small">
+              Once only: lets Courier get a short-lived Gmail token (send only) from Auth0 Token
+              Vault after you confirm a send.
+            </p>
+          </div>
+        )}
         <button className="btn btn-secondary stop-btn" onClick={stop} disabled={tokens?.stopped}>
           {tokens?.stopped ? 'Agents stopped' : 'Stop all agents'}
         </button>

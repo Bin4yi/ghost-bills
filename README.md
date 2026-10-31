@@ -193,16 +193,28 @@ Do these steps in the Auth0 Dashboard, in order:
    - Turn on **On-Behalf-Of Token Exchange**.
    - Under Advanced Settings > Grant Types, turn on **Token Vault**.
    - Copy its credentials to `COURIER_CLIENT_ID` / `COURIER_CLIENT_SECRET`.
-5. **Google with Token Vault** (Authentication > Social > Google / Gmail):
+5. **Google with Token Vault (Connected Accounts)**:
    - In Google Cloud: create an OAuth client (Web), add Auth0's callback
      `https://YOUR_DOMAIN/login/callback`, enable the **Gmail API**, keep the
      consent screen in **Testing**, and add your Gmail as a **test user**.
-   - In Auth0: paste the Google client ID and secret. Under Permissions, add
-     `https://www.googleapis.com/auth/gmail.send`. Turn on **Offline Access**
-     and **Token Vault** (Connected Accounts / "Use for Token Vault").
-   - Enable the connection for `Ghost Bills Web`.
+   - Authentication > Social > **google-oauth2**: paste the Google client ID and
+     secret. Under Permissions, tick **Offline Access** and
+     `https://www.googleapis.com/auth/gmail.send`. Under **Purpose**, keep
+     Authentication on and turn on **Use for Connected Accounts for Token Vault**.
+     Enable the connection for `Ghost Bills Web`.
+   - Applications > APIs > **My Account API**: **Activate** it. On its
+     **Application Access** tab, give `Ghost Bills Web` **User-Delegated Access**
+     with `create:me:connected_accounts`.
+   - Applications > `Ghost Bills Web`: under **Multi-Resource Refresh Token** >
+     Edit Configuration, toggle on the **My Account API**. Under Advanced Settings >
+     Grant Types, make sure **Refresh Token** is on.
+   - Applications > APIs > `Ghost Bills Login` > Settings: turn on **Allow Offline
+     Access** (the login asks for `offline_access`).
 6. Copy `.env.example` to `.env`, fill in the values, and restart with
    `uv run python -m scripts.dev`. **Log in** appears in the header.
+7. In the app, log in, then press **Connect Gmail** once (in "Who can do what
+   right now"). That stores your Google token in Token Vault, so Courier can get
+   a short-lived Gmail send token after you confirm each email.
 
 **Why not CIBA or MFA?** Phone approval through CIBA needs an Enterprise plan or
 the AI Agents add-on, and MFA needs a Professional or Enterprise plan. So on the
