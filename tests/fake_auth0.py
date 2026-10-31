@@ -1,13 +1,12 @@
 """A fake Auth0 tenant for tests: real RS256 keys and JWKS, no network.
 
 Tokens are checked by the real auth0-api-python verifier (through its
-`custom_fetch` hook). Exchanges, Token Vault, CIBA and Gmail are fakes that
+`custom_fetch` hook). Exchanges, Token Vault, the step-up code exchange and Gmail are fakes that
 record what they were asked to do.
 """
 
 from __future__ import annotations
 
-import itertools
 import json
 import time
 from typing import Any
@@ -33,7 +32,7 @@ SETTINGS = AuthSettings(
     ledger_audience="https://ghost-bills.local/ledger",
     courier_audience="https://ghost-bills.local/courier",
     penny_client_id=PENNY, penny_client_secret="penny-secret",
-    courier_client_id=COURIER, courier_client_secret="courier-secret", ciba_timeout=120)
+    courier_client_id=COURIER, courier_client_secret="courier-secret")
 
 _KEY = rsa.generate_private_key(public_exponent=65537, key_size=2048)
 _OTHER_KEY = rsa.generate_private_key(public_exponent=65537, key_size=2048)
@@ -67,14 +66,23 @@ def penny_token(**kw: Any) -> str:
     return mint(act={"sub": PENNY}, azp=PENNY, **kw)
 
 
+def id_token(nonce: str, sub: str = USER, auth_age: int = 5,
+             aud: str = SETTINGS.client_id, wrong_key: bool = False) -> str:
+    """The ID token from the fresh confirmation login on the Web app."""
+    now = int(time.time())
+    claims = {"iss": ISSUER, "sub": sub, "aud": aud, "iat": now, "exp": now + 600,
+              "nonce": nonce, "auth_time": now - auth_age, "amr": ["pwd"]}
+    key = _OTHER_KEY if wrong_key else _KEY
+    return jwt.encode(claims, key, algorithm="RS256", headers={"kid": "test-key"})
+
+
 class FakeGateway:
     def __init__(self, nest_act: bool = True) -> None:
         self.nest_act = nest_act
         self.exchanges: list[dict[str, Any]] = []
         self.vault_calls: list[dict[str, Any]] = []
-        self.approvals: list[dict[str, Any]] = []
-        self.answer = "approve"  # approve | deny | timeout
-        self._ids = itertools.count(1)
+        self.code_exchanges: list[dict[str, Any]] = []
+        self.next_id_token: str | None = None
 
     async def on_behalf_of(self, client_id, client_secret, subject_token, subject_audience,
                            audience, scope):
@@ -94,18 +102,12 @@ class FakeGateway:
         return {"access_token": "fake-google-access-token-0123456789",
                 "expires_in": 3599, "scope": "https://www.googleapis.com/auth/gmail.send"}
 
-    def start_approval(self, binding_message, user_sub, audience, scope, expiry):
-        self.approvals.append({"binding_message": binding_message, "user_sub": user_sub,
-                               "audience": audience, "scope": scope, "expiry": expiry})
-        return {"auth_req_id": f"req-{next(self._ids)}", "expires_in": expiry, "interval": 0}
-
-    def poll_approval(self, auth_req_id):
-        if self.answer == "approve":
-            return {"state": "approved", "access_token": mint(aud=SETTINGS.courier_audience,
-                                                              scope="openid send:cancel_email")}
-        if self.answer == "deny":
-            return {"state": "denied"}
-        return {"state": "pending"}
+    async def exchange_code(self, code, code_verifier, redirect_uri):
+        self.code_exchanges.append({"code": code, "redirect_uri": redirect_uri})
+        if self.next_id_token is None:
+            from backend.auth.tokens import TokenError
+            raise TokenError(401, "Auth0 did not accept the approval.")
+        return {"id_token": self.next_id_token, "access_token": "unused"}
 
 
 class FakeGmail:

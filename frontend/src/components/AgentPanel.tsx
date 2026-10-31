@@ -41,16 +41,19 @@ function time(iso: string | null): string {
 function steps(row: AuditRow, name: string): string[] {
   const asker = row.asked_by === 'you' ? 'You' : row.asked_by
   const out = [`${asker} asked Courier to send the ${name} email ${time(row.requested_at)}`]
-  if (row.approved_at) out.push(`you approved on your phone ${time(row.approved_at)}`)
+  if (row.approved_at) out.push(`you confirmed by logging in again ${time(row.approved_at)}`)
   switch (row.outcome) {
     case 'sent':
       out.push(`1 email sent to ${row.recipient_domain}`, 'Google token discarded')
       break
-    case 'denied':
-      out.push('you said no on your phone', 'nothing sent')
+    case 'cancelled':
+      out.push('you cancelled the confirmation', 'nothing sent')
       break
-    case 'timeout':
-      out.push('no answer in time', 'nothing sent')
+    case 'expired':
+      out.push('the confirmation expired', 'nothing sent')
+      break
+    case 'failed':
+      out.push(`confirmation refused: ${row.note}`, 'nothing sent')
       break
     case 'refused':
       out.push(`Courier said no: ${row.note}`)
@@ -62,7 +65,7 @@ function steps(row: AuditRow, name: string): string[] {
       out.push('something went wrong', 'nothing sent')
       break
     default:
-      out.push('waiting for your phone…')
+      out.push('waiting for you to confirm…')
   }
   return out
 }
@@ -131,7 +134,7 @@ export function AgentPanel({ refreshKey, ghostNames }: Props) {
           What Penny did
         </h2>
         {rows.length === 0 ? (
-          <p className="muted">Nothing yet. Penny can only ask; you approve every email.</p>
+          <p className="muted">Nothing yet. Penny can only ask; you confirm every email by logging in again.</p>
         ) : (
           <ol className="audit-list">
             {rows.map((r) => (

@@ -73,6 +73,7 @@ CREATE TABLE IF NOT EXISTS audit (
     recipient_domain TEXT,
     scope TEXT,
     chain TEXT,
+    approval_method TEXT,
     requested_at TEXT NOT NULL,
     approved_at TEXT,
     outcome TEXT,
@@ -94,10 +95,18 @@ def connect() -> Iterator[sqlite3.Connection]:
     con.row_factory = sqlite3.Row
     try:
         con.executescript(SCHEMA)
+        _migrate(con)
         yield con
         con.commit()
     finally:
         con.close()
+
+
+def _migrate(con: sqlite3.Connection) -> None:
+    """Add columns that older databases don't have yet."""
+    cols = {r[1] for r in con.execute("PRAGMA table_info(audit)").fetchall()}
+    if cols and "approval_method" not in cols:
+        con.execute("ALTER TABLE audit ADD COLUMN approval_method TEXT")
 
 
 # --- transactions ---------------------------------------------------------

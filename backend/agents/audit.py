@@ -9,7 +9,7 @@ from typing import Any
 from backend import db
 
 FIELDS = ("asked_by", "acted_by", "on_behalf_of", "ghost_id", "recipient_domain", "scope",
-          "chain", "requested_at", "approved_at", "outcome", "outcome_at", "sent_at",
+          "chain", "approval_method", "requested_at", "approved_at", "outcome", "outcome_at", "sent_at",
           "gmail_message_id", "note")
 
 

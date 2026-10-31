@@ -89,6 +89,36 @@ class Verifier:
             raise TokenError(403, "This token belongs to a different agent.")
         return claims
 
+    # --- ID tokens from the step-up login (signature, iss, aud = the Web app, exp) ----------
+
+    async def _fetch(self, url: str) -> dict[str, Any]:
+        if self.custom_fetch:
+            data = await self.custom_fetch(url)
+            return data.json() if hasattr(data, "json") else data
+        import httpx
+        async with httpx.AsyncClient(timeout=10) as client:
+            r = await client.get(url)
+            r.raise_for_status()
+            return r.json()
+
+    async def verify_id_token(self, id_token: str) -> dict[str, Any]:
+        """Check the step-up ID token's signature (JWKS), issuer, audience and expiry.
+        The confirmation rules (nonce, sub, auth_time) are checked by the caller."""
+        import jwt
+        try:
+            meta = await self._fetch(f"https://{self.settings.domain}/.well-known/openid-configuration")
+            jwks = await self._fetch(meta["jwks_uri"])
+        except Exception as err:
+            raise TokenError(503, "Auth0 can't be reached to check the approval.") from err
+        try:
+            kid = jwt.get_unverified_header(id_token).get("kid")
+            jwk = next(k for k in jwks.get("keys", []) if k.get("kid") == kid)
+            return jwt.decode(id_token, jwt.PyJWK(jwk).key, algorithms=["RS256"],
+                              audience=self.settings.client_id, issuer=self.settings.issuer,
+                              leeway=10, options={"require": ["exp", "iat", "sub"]})
+        except Exception as err:
+            raise TokenError(401, "The approval token is not valid.") from err
+
 
 # --- keep tokens out of logs --------------------------------------------------
 

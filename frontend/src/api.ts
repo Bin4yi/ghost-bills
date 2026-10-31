@@ -111,9 +111,11 @@ export interface Me {
 export interface CourierJob {
   request_id: string
   ghost_id: string
-  state: 'waiting' | 'asking_phone' | 'sent' | 'denied' | 'timeout' | 'refused' | 'stopped' | 'error'
+  state: 'needs_approval' | 'approved' | 'sent' | 'cancelled' | 'expired' | 'failed' | 'refused' | 'stopped' | 'error'
   message: string
   recipient_domain: string | null
+  expires_in: number
+  step_up_url: string | null
 }
 
 /** Decoded claims only. The server never sends a raw token. */
@@ -142,6 +144,7 @@ export interface AuditRow {
   recipient_domain: string | null
   scope: string | null
   chain: string | null
+  approval_method: string | null
   requested_at: string
   approved_at: string | null
   outcome: string | null
@@ -189,6 +192,7 @@ export const api = {
   cancelRequest: (ghostId: string, to_address: string) =>
     post<CourierJob>(`/api/ghosts/${enc(ghostId)}/cancel-request`, { to_address }),
   courierStatus: (requestId: string) => call<CourierJob>(`/api/courier/status/${enc(requestId)}`),
+  pendingSends: () => call<CourierJob[]>('/api/courier/pending'),
   agentTokens: () => call<AgentTokens>('/api/agents/tokens'),
   stopAgents: () => post<{ stopped: boolean }>('/api/agents/stop'),
   audit: () => call<AuditRow[]>('/api/audit'),

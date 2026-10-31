@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Literal
 
 from fastapi import Depends, FastAPI, File, HTTPException, Request, Response, UploadFile
+from fastapi.responses import RedirectResponse
 from starlette.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -17,7 +18,7 @@ from backend.agents.ledger import snapshot
 from backend.agents.runtime import build as build_agents
 from backend.agents.runtime import runtime
 from backend.agents.vault import AgentsStopped
-from backend.auth import web
+from backend.auth import stepup, web
 from backend.auth.config import load_settings
 from backend.auth.guards import Caller, agent_or_local, courier_only, local_ui_only
 from backend.auth.tokens import TokenError, install_log_redaction
@@ -172,10 +173,11 @@ def penny_handoff(courier: Courier, user_sub: str, held):
     """Penny's request_send: she can only hand a job to Courier. The address is
     whatever YOU typed for that ghost, and your phone still has to approve."""
     def handoff(ghost_id: str) -> dict:
-        job = courier.request_for(ghost_id, user_sub=user_sub, penny=held, asked_by="Penny")
-        if job.state == "refused":
+        job = courier.request_for(ghost_id, user_sub=user_sub, asked_by="Penny")
+        if job.status == "refused":
             return {"summary": [f"Courier said no: {job.message}"]}
-        return {"summary": ["I asked Courier. Check your phone to approve the email."]}
+        return {"summary": [f"I asked Courier to prepare the {job.ghost_name} email. Open that ghost "
+                            "and press 'Approve on your phone' within 2 minutes."]}
     return handoff
 
 
@@ -207,7 +209,8 @@ class CancelRequestBody(BaseModel):
 @app.post("/api/ghosts/{gid:path}/cancel-request")
 async def cancel_request(gid: str, body: CancelRequestBody, request: Request, response: Response,
                          caller: Caller = Depends(local_ui_only)) -> dict:
-    """You typed the company's address and pressed 'Ask for approval'."""
+    """You typed the company's address and pressed 'Ask for approval'.
+    Creates one pending send (2 minutes) and returns its step-up URL."""
     rt = runtime(request)
     user = await web.current_user(request, response)
     if not user:
@@ -217,17 +220,66 @@ async def cancel_request(gid: str, body: CancelRequestBody, request: Request, re
     address = body.to_address.strip()
     if not valid_address(address):
         raise HTTPException(400, "That doesn't look like an email address.")
-    try:
-        held = await penny.penny_token(rt, user["sub"], await web.user_access_token(request, response))
-    except AgentsStopped as err:
-        raise HTTPException(423, "Agents are stopped. Log in again to start them.") from err
-    except TokenError as err:
-        raise HTTPException(err.status, err.message) from err
+    if rt.tokens.stopped:
+        raise HTTPException(423, "Agents are stopped. Log in again to start them.")
     db.put("ghost_status", "ghost_id", gid, status="cancel_requested", cancelled_at=None)
     courier: Courier = request.app.state.courier
     courier.remember_typed_address(gid, address)
-    job = courier.send_cancel_email(gid, address, user_sub=user["sub"], penny=held, asked_by="you")
-    return job.public()
+    return courier.send_cancel_email(gid, address, user_sub=user["sub"], asked_by="you").public()
+
+
+@app.get("/auth/step-up/callback")
+async def step_up_callback(request: Request, response: Response) -> RedirectResponse:
+    """Back from Auth0. Every check must pass, or nothing is sent (and the audit says why)."""
+    rt = runtime(request)
+    courier: Courier = request.app.state.courier
+    q = request.query_params
+    p = courier.find_by_state(q.get("state"))
+    if p is None:
+        return RedirectResponse("/?send=unknown", status_code=302)
+    back = RedirectResponse(f"/?send={p.request_id}", status_code=302)
+    if p.used:  # one-time: a replayed callback never sends again
+        return back
+    if q.get("error"):
+        courier.refuse(p, "cancelled", q.get("error_description") or q.get("error") or "login cancelled")
+        return back
+    if p.expired():
+        courier.refuse(p, "expired", "the 2 minutes ran out before approval")
+        return back
+    try:
+        tokens = await rt.gateway.exchange_code(q.get("code") or "", p.verifier, rt.settings.step_up_redirect)
+        claims = await rt.verifier.verify_id_token(tokens.get("id_token") or "")
+        user = await web.current_user(request, response)
+        stepup.check_claims(claims, p, user.get("sub") if user else None)
+        held = await penny.penny_token(rt, p.user_sub, await web.user_access_token(request, response))
+    except stepup.StepUpRefused as err:
+        courier.refuse(p, err.outcome, err.reason)
+        return back
+    except AgentsStopped:
+        courier.refuse(p, "stopped", "agents were stopped")
+        return back
+    except TokenError as err:
+        courier.refuse(p, "failed", err.message.rstrip("."))
+        return back
+    await courier.approve_and_send(p, claims, held)
+    return back
+
+
+@app.get("/auth/step-up/{request_id}")
+async def step_up_start(request_id: str, request: Request, response: Response,
+                        caller: Caller = Depends(local_ui_only)) -> RedirectResponse:
+    """Lock 3: send you to Auth0 for a fresh login, bound to this one request."""
+    courier: Courier = request.app.state.courier
+    p = courier.jobs.get(request_id)
+    user = await web.current_user(request, response)
+    if p is None or not user or user.get("sub") != p.user_sub:
+        return RedirectResponse(f"/?send={request_id}", status_code=302)
+    if p.used or p.status != "needs_approval":
+        return RedirectResponse(f"/?send={request_id}", status_code=302)
+    if p.expired():
+        courier.refuse(p, "expired", "the 2 minutes ran out before approval")
+        return RedirectResponse(f"/?send={request_id}", status_code=302)
+    return RedirectResponse(stepup.authorize_url(runtime(request).settings, p), status_code=302)
 
 
 class CourierSendBody(BaseModel):
@@ -237,8 +289,8 @@ class CourierSendBody(BaseModel):
 @app.post("/api/courier/send")
 async def courier_send(body: CourierSendBody, request: Request,
                        caller: Caller = Depends(courier_only)) -> dict:
-    """Lock 2: only Courier's send:cancel_email token gets past courier_only.
-    Then Lock 3 (your phone) runs inside deliver()."""
+    """Lock 2: only Courier's send:cancel_email token gets past courier_only,
+    and deliver() only sends a request you confirmed with a fresh login (Lock 3)."""
     try:
         return await request.app.state.courier.deliver(body.request_id, caller.claims)
     except TokenError as err:
@@ -251,6 +303,16 @@ def courier_status(request_id: str, request: Request, caller: Caller = Depends(l
     if job is None:
         raise HTTPException(404, "No send job with that id.")
     return job.public()
+
+
+@app.get("/api/courier/pending")
+async def courier_pending(request: Request, response: Response,
+                          caller: Caller = Depends(local_ui_only)) -> list[dict]:
+    """Sends waiting for your approval (for example, ones Penny prepared)."""
+    user = await web.current_user(request, response)
+    if not user:
+        return []
+    return [p.public() for p in request.app.state.courier.open_for(user["sub"])]
 
 
 @app.get("/api/audit")

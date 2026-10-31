@@ -6,10 +6,10 @@ no test ever touches the network.
 
 from __future__ import annotations
 
-import json
 from typing import Any, Protocol
 
 from backend.auth.config import AuthSettings
+from backend.auth.tokens import TokenError
 
 
 class Gateway(Protocol):
@@ -19,10 +19,7 @@ class Gateway(Protocol):
     async def token_vault(self, client_id: str, client_secret: str, subject_token: str,
                           subject_audience: str, connection: str) -> dict[str, Any]: ...
 
-    def start_approval(self, binding_message: str, user_sub: str, audience: str, scope: str,
-                       expiry: int) -> dict[str, Any]: ...
-
-    def poll_approval(self, auth_req_id: str) -> dict[str, Any]: ...
+    async def exchange_code(self, code: str, code_verifier: str, redirect_uri: str) -> dict[str, Any]: ...
 
 
 class Auth0Gateway:
@@ -49,34 +46,18 @@ class Auth0Gateway:
         return await api.get_access_token_for_connection(
             {"connection": connection, "access_token": subject_token})
 
-    def start_approval(self, binding_message: str, user_sub: str, audience: str, scope: str,
-                       expiry: int) -> dict[str, Any]:
-        """CIBA /bc-authorize. Expiry <= 300 s means Guardian push to the user's phone."""
-        from auth0.authentication.back_channel_login import BackChannelLogin
-        client_id, client_secret = self.s.approval_client
-        login_hint = json.dumps({"format": "iss_sub", "iss": self.s.issuer, "sub": user_sub})
-        return BackChannelLogin(self.s.domain, client_id, client_secret=client_secret
-                                ).back_channel_login(binding_message=binding_message,
-                                                     login_hint=login_hint, scope=scope,
-                                                     requested_expiry=expiry, audience=audience)
+    async def exchange_code(self, code: str, code_verifier: str, redirect_uri: str) -> dict[str, Any]:
+        """Step-up callback: the authorization code (PKCE) for the Web app's ID token.
+        `authenticated_post` adds the Web app's client secret (it's a confidential client)."""
+        import asyncio
 
-    def poll_approval(self, auth_req_id: str) -> dict[str, Any]:
-        """Poll /oauth/token with the CIBA grant. Returns {"state": ...}."""
         from auth0.authentication.get_token import GetToken
         from auth0.exceptions import Auth0Error
-        client_id, client_secret = self.s.approval_client
+        client = GetToken(self.s.domain, self.s.client_id, client_secret=self.s.client_secret)
+        data = {"client_id": self.s.client_id, "grant_type": "authorization_code", "code": code,
+                "code_verifier": code_verifier, "redirect_uri": redirect_uri}
         try:
-            token = GetToken(self.s.domain, client_id, client_secret=client_secret
-                             ).backchannel_login(auth_req_id)
+            return await asyncio.to_thread(client.authenticated_post,
+                                           f"https://{self.s.domain}/oauth/token", data)
         except Auth0Error as err:
-            code = getattr(err, "error_code", "") or ""
-            if code == "authorization_pending":
-                return {"state": "pending"}
-            if code == "slow_down":
-                return {"state": "slow_down"}
-            if code in ("access_denied",):
-                return {"state": "denied"}
-            if code in ("expired_token", "invalid_grant"):
-                return {"state": "expired"}
-            return {"state": "error", "code": code or "unknown"}
-        return {"state": "approved", "access_token": token.get("access_token")}
+            raise TokenError(401, "Auth0 did not accept the approval.") from err

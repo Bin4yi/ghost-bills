@@ -1,51 +1,63 @@
 import { useEffect, useState } from 'react'
 import { api, type CourierJob, type Ghost } from '../api'
 
-const FINAL = new Set(['sent', 'denied', 'timeout', 'refused', 'stopped', 'error'])
+const FINAL = new Set(['sent', 'cancelled', 'expired', 'failed', 'refused', 'stopped', 'error'])
 
 interface Props {
   ghost: Ghost
   onDone: () => void
+  /** The result after coming back from the Auth0 approval, if it is for this ghost. */
+  returned?: CourierJob | null
 }
 
-/** You type the company's address. Courier sends only after you approve on your phone. */
-export function SendWithGmail({ ghost, onDone }: Props) {
+function clock(seconds: number): string {
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`
+}
+
+/** You type the company's address, then confirm by logging in again. Only then does Courier send. */
+export function SendWithGmail({ ghost, onDone, returned = null }: Props) {
   const [open, setOpen] = useState(false)
   const [address, setAddress] = useState('')
   const [job, setJob] = useState<CourierJob | null>(null)
+  const [left, setLeft] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
-  // A different ghost starts fresh: the address field is always empty.
+  // A different ghost starts fresh (the address field is always empty), unless we just came
+  // back from approving this one, or Penny prepared a send that waits for your approval.
   useEffect(() => {
     setOpen(false)
     setAddress('')
-    setJob(null)
     setError(null)
-  }, [ghost.id])
-
-  // Follow the job until it ends.
-  useEffect(() => {
-    if (!job || FINAL.has(job.state)) {
-      if (job) onDone()
+    if (returned && returned.ghost_id === ghost.id) {
+      setJob(returned)
+      onDone()
       return
     }
-    const t = setTimeout(async () => {
-      try {
-        setJob(await api.courierStatus(job.request_id))
-      } catch (e) {
-        setError(String(e))
-      }
-    }, 1500)
-    return () => clearTimeout(t)
-  }, [job, onDone])
+    setJob(null)
+    api
+      .pendingSends()
+      .then((list) => setJob(list.find((p) => p.ghost_id === ghost.id) ?? null))
+      .catch(() => {})
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ghost.id, returned])
+
+  // Count down the 2 minutes the request is valid for.
+  useEffect(() => {
+    if (!job || job.state !== 'needs_approval') return
+    setLeft(job.expires_in)
+    const t = setInterval(() => setLeft((s) => Math.max(0, s - 1)), 1000)
+    return () => clearInterval(t)
+  }, [job])
 
   const ask = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
     setBusy(true)
     try {
-      setJob(await api.cancelRequest(ghost.id, address.trim()))
+      const j = await api.cancelRequest(ghost.id, address.trim())
+      setJob(j)
+      if (FINAL.has(j.state)) onDone()
     } catch (err) {
       setError(String(err).replace(/^Error: /, ''))
     } finally {
@@ -54,6 +66,8 @@ export function SendWithGmail({ ghost, onDone }: Props) {
   }
 
   const inputId = `to-${ghost.id}`
+  const waiting = job?.state === 'needs_approval'
+  const expired = waiting && left <= 0
   return (
     <div className="send-gmail">
       {!open && !job && (
@@ -62,7 +76,7 @@ export function SendWithGmail({ ghost, onDone }: Props) {
             Send with Gmail
           </button>
           <p className="muted small">
-            Courier sends it from your Gmail only after you approve on your phone.
+            Courier sends it from your Gmail only after you confirm it by logging in again.
           </p>
         </>
       )}
@@ -90,14 +104,30 @@ export function SendWithGmail({ ghost, onDone }: Props) {
           </div>
         </form>
       )}
-      {job && (
-        <div className={`send-status state-${job.state}`} role="status" aria-live="polite">
-          {job.state === 'asking_phone' && <span className="spinner" aria-hidden="true" />}
-          <strong>{job.message}</strong>
+      {job && waiting && !expired && job.step_up_url && (
+        <div className="send-status state-waiting" role="status">
+          {/* A full page navigation: Auth0 asks you to log in again, then sends you back here. */}
+          <a className="btn btn-primary" href={job.step_up_url}>
+            Confirm by logging in again
+          </a>
+          <p className="small">
+            You'll go to Auth0 and log in once more to confirm this one email, then come straight
+            back here. Email to <strong>{job.recipient_domain}</strong>. This request expires in{' '}
+            <span className="mono">{clock(left)}</span>.
+          </p>
+        </div>
+      )}
+      {(expired || (job && FINAL.has(job.state))) && job && (
+        <div
+          className={`send-status state-${expired ? 'expired' : job.state}`}
+          role="status"
+          aria-live="polite"
+        >
+          <strong>{expired ? 'Not sent: approval expired' : job.message}</strong>
           {job.recipient_domain && (
             <span className="muted small"> Email to {job.recipient_domain}</span>
           )}
-          {FINAL.has(job.state) && job.state !== 'sent' && (
+          {(expired || job.state !== 'sent') && (
             <button className="btn btn-secondary btn-small" onClick={() => setJob(null)}>
               Try again
             </button>

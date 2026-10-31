@@ -40,9 +40,6 @@ class AuthSettings:
     penny_client_secret: str = ""
     courier_client_id: str = ""
     courier_client_secret: str = ""
-    ciba_client_id: str = ""
-    ciba_client_secret: str = ""
-    ciba_timeout: int = 120
     google_connection: str = "google-oauth2"
 
     @property
@@ -62,11 +59,9 @@ class AuthSettings:
         return f"https://{self.domain}/"
 
     @property
-    def approval_client(self) -> tuple[str, str]:
-        """The client that asks for phone approval (CIBA). Defaults to Courier."""
-        if self.ciba_client_id and self.ciba_client_secret:
-            return self.ciba_client_id, self.ciba_client_secret
-        return self.courier_client_id, self.courier_client_secret
+    def step_up_redirect(self) -> str:
+        """Where Auth0 returns after you confirm a send by logging in again (same Web app)."""
+        return f"{self.app_base_url.rstrip('/')}/auth/step-up/callback"
 
 
 def load_settings() -> AuthSettings:
@@ -85,8 +80,5 @@ def load_settings() -> AuthSettings:
         penny_client_secret=e("PENNY_CLIENT_SECRET", ""),
         courier_client_id=e("COURIER_CLIENT_ID", ""),
         courier_client_secret=e("COURIER_CLIENT_SECRET", ""),
-        ciba_client_id=e("CIBA_CLIENT_ID", ""),
-        ciba_client_secret=e("CIBA_CLIENT_SECRET", ""),
-        ciba_timeout=int(e("CIBA_TIMEOUT_SECONDS", "120") or 120),
         google_connection=e("GOOGLE_CONNECTION", "google-oauth2"),
     )

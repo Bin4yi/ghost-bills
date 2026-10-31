@@ -31,11 +31,14 @@ def rt():
     """Agents set up against the fake tenant."""
     from backend.app import app
 
+    from backend.agents.courier import Courier
+
     from . import fake_auth0 as fa
-    old = app.state.agents
+    old, old_courier = app.state.agents, app.state.courier
     app.state.agents = runtime = fa.fake_runtime()
+    app.state.courier = Courier(app)  # no pending sends carried over between tests
     yield runtime
-    app.state.agents = old
+    app.state.agents, app.state.courier = old, old_courier
 
 
 @pytest.fixture

@@ -41,7 +41,7 @@ def test_settings_flags() -> None:
                             "penny_client_id": "p", "penny_client_secret": "ps",
                             "courier_client_id": "c", "courier_client_secret": "cs"})
     assert ready.agents_ready
-    assert ready.approval_client == ("c", "cs")  # CIBA falls back to Courier's client
+    assert ready.step_up_redirect == "http://localhost:5173/auth/step-up/callback"
 
 
 def test_dotenv_reader(tmp_path, monkeypatch) -> None:

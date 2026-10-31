@@ -4,11 +4,9 @@ from __future__ import annotations
 
 import asyncio
 import base64
-import json
 from email import message_from_bytes
 
 import pytest
-from auth0.authentication.back_channel_login import BackChannelLogin
 from auth0.authentication.get_token import GetToken
 from auth0.exceptions import Auth0Error
 
@@ -18,40 +16,35 @@ from backend.agents.gateway import Auth0Gateway
 from . import fake_auth0 as fa
 
 
-def test_start_approval_sends_the_right_ciba_request(monkeypatch) -> None:
+def test_exchange_code_sends_the_secret_and_pkce_verifier(monkeypatch) -> None:
     seen = {}
 
-    def fake(self, **kwargs):
-        seen.update(kwargs, client_id=self.client_id)
-        return {"auth_req_id": "abc", "expires_in": 120, "interval": 5}
+    def fake(self, url, data, headers=None):
+        seen.update(data, url=url, sdk_client_id=self.client_id, secret=self.client_secret)
+        return {"id_token": "x"}
 
-    monkeypatch.setattr(BackChannelLogin, "back_channel_login", fake)
-    out = Auth0Gateway(fa.SETTINGS).start_approval("Send cancel email to x.example about X",
-                                                  fa.USER, fa.SETTINGS.courier_audience,
-                                                  "openid send:cancel_email", 120)
-    assert out["auth_req_id"] == "abc"
-    assert json.loads(seen["login_hint"]) == {"format": "iss_sub", "iss": fa.ISSUER, "sub": fa.USER}
-    assert seen["requested_expiry"] == 120 and seen["audience"] == fa.SETTINGS.courier_audience
-    assert seen["scope"] == "openid send:cancel_email"
-    assert seen["client_id"] == fa.COURIER  # CIBA falls back to Courier's client
-
-
-@pytest.mark.parametrize("code, state", [
-    ("authorization_pending", "pending"), ("slow_down", "slow_down"),
-    ("access_denied", "denied"), ("expired_token", "expired"), ("something_else", "error"),
-])
-def test_poll_maps_ciba_errors(monkeypatch, code, state) -> None:
-    def fake(self, auth_req_id, grant_type="urn:openid:params:grant-type:ciba"):
-        raise Auth0Error(400, code, "nope")
-
-    monkeypatch.setattr(GetToken, "backchannel_login", fake)
-    assert Auth0Gateway(fa.SETTINGS).poll_approval("abc")["state"] == state
+    monkeypatch.setattr(GetToken, "authenticated_post", fake)
+    out = asyncio.run(Auth0Gateway(fa.SETTINGS).exchange_code(
+        "the-code", "the-verifier", fa.SETTINGS.step_up_redirect))
+    assert out == {"id_token": "x"}
+    assert seen["url"] == f"https://{fa.DOMAIN}/oauth/token"
+    assert seen["grant_type"] == "authorization_code" and seen["code"] == "the-code"
+    assert seen["code_verifier"] == "the-verifier"
+    assert seen["redirect_uri"] == fa.SETTINGS.step_up_redirect
+    assert seen["client_id"] == seen["sdk_client_id"] == fa.SETTINGS.client_id
+    assert seen["secret"] == "web-secret"  # authenticated_post adds the Web app's secret
 
 
-def test_poll_approved(monkeypatch) -> None:
-    monkeypatch.setattr(GetToken, "backchannel_login",
-                        lambda self, auth_req_id, grant_type=None: {"access_token": "t"})
-    assert Auth0Gateway(fa.SETTINGS).poll_approval("abc") == {"state": "approved", "access_token": "t"}
+def test_exchange_code_refusal_is_plain(monkeypatch) -> None:
+    from backend.auth.tokens import TokenError
+
+    def fake(self, url, data, headers=None):
+        raise Auth0Error(403, "invalid_grant", "nope")
+
+    monkeypatch.setattr(GetToken, "authenticated_post", fake)
+    with pytest.raises(TokenError) as err:
+        asyncio.run(Auth0Gateway(fa.SETTINGS).exchange_code("c", "v", "r"))
+    assert err.value.status == 401
 
 
 def test_on_behalf_of_uses_the_sdk(monkeypatch) -> None:

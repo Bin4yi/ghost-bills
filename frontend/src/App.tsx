@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { api, type GhostType, type LlmStatus, type Me, type Question, type Scan, type Series, type Status } from './api'
+import { api, type CourierJob, type GhostType, type LlmStatus, type Me, type Question, type Scan, type Series, type Status } from './api'
 import { AgentPanel } from './components/AgentPanel'
 import { AskPenny } from './components/AskPenny'
 import { BigNumber } from './components/BigNumber'
@@ -22,6 +22,27 @@ export default function App() {
   const [llm, setLlm] = useState<LlmStatus | null>(null)
   const [me, setMe] = useState<Me | null>(null)
   const [agentRefresh, setAgentRefresh] = useState(0)
+  const [sendResult, setSendResult] = useState<CourierJob | null>(null)
+  const [sendNotice, setSendNotice] = useState<string | null>(null)
+
+  // Back from the Auth0 step-up approval: /?send=<request id>. Show the result on that ghost.
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get('send')
+    if (!id) return
+    window.history.replaceState(null, '', window.location.pathname)
+    if (id === 'unknown') {
+      setSendNotice("That approval didn't match any waiting send. Nothing was sent.")
+      return
+    }
+    api
+      .courierStatus(id)
+      .then((job) => {
+        setSelected(job.ghost_id)
+        setSendResult(job)
+        requestAnimationFrame(() => document.getElementById('detail')?.scrollIntoView())
+      })
+      .catch(() => setSendNotice('Could not find that send. Nothing was sent.'))
+  }, [])
   const [error, setError] = useState<string | null>(null)
   const [filter, setFilter] = useState<GhostType | null>(null)
   const [selected, setSelected] = useState<string | null>(null)
@@ -127,6 +148,11 @@ export default function App() {
           </div>
         </div>
       )}
+      {sendNotice && (
+        <p className="card notice" role="status">
+          {sendNotice}
+        </p>
+      )}
       {error && (
         <div className="card notice" role="alert">
           {error}
@@ -164,6 +190,7 @@ export default function App() {
               onStatus={setStatus}
               canSend={agentsOn}
               onSendDone={onSendDone}
+              sendResult={sendResult}
             />
           </div>
 

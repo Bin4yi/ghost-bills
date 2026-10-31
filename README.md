@@ -150,10 +150,6 @@ Without Auth0, Ghost Bills runs fully local and offline. Set it up only if you
 want Penny to send an approved cancel email from your own Gmail. The details and
 sources are in [docs/auth0-notes.md](docs/auth0-notes.md).
 
-> **Plan note:** login, Penny's read-only token and Token Vault work on the
-> Free plan. The phone approval (CIBA, "Lock 3") needs a paid plan with the
-> **AI Agents add-on**, or Enterprise.
-
 Auth0's On-Behalf-Of exchange needs one API per hop, and each agent is a
 **Custom API Client** tied to the API whose token it receives:
 
@@ -161,6 +157,10 @@ Auth0's On-Behalf-Of exchange needs one API per hop, and each agent is a
 user login token (aud: /login) --Penny--> token (aud: /ledger, read:ghosts)
                                 --Courier--> token (aud: /courier, send:cancel_email)
 ```
+
+The approval (Lock 3) is a **fresh login**: you log in again on Auth0 to
+confirm one send. It proves you are there and confirms that one request. It is
+not a second factor (MFA needs a paid plan).
 
 Do these steps in the Auth0 Dashboard, in order:
 
@@ -171,8 +171,9 @@ Do these steps in the Auth0 Dashboard, in order:
    - On `Ghost Bills Ledger` and `Ghost Bills Courier`: Settings > **Allow Offline
      Access** off, and a short token expiration (300 seconds). `Ghost Bills Login`
      can keep the default expiration.
-2. **Regular Web Application** `Ghost Bills Web` (Applications > Create Application):
-   - Allowed Callback URLs: `http://localhost:5173/auth/callback`
+2. **Regular Web Application** `Ghost Bills Web` (Applications > Create Application).
+   It's used for login and for the fresh-login confirmation:
+   - Allowed Callback URLs: `http://localhost:5173/auth/callback, http://localhost:5173/auth/step-up/callback`
    - Allowed Logout URLs: `http://localhost:5173`
    - Allowed Web Origins: `http://localhost:5173`
    - Copy its Client ID and Secret to `AUTH0_CLIENT_ID` / `AUTH0_CLIENT_SECRET`.
@@ -187,9 +188,6 @@ Do these steps in the Auth0 Dashboard, in order:
      **User-Delegated Access** with `send:cancel_email`.
    - Turn on **On-Behalf-Of Token Exchange**.
    - Under Advanced Settings > Grant Types, turn on **Token Vault**.
-   - Turn on **Client Initiated Backchannel Authentication (CIBA)** if it's
-     offered here. If not, create a Regular Web App `Ghost Bills Approvals`
-     with the CIBA grant and use its credentials as `CIBA_CLIENT_ID` / `CIBA_CLIENT_SECRET`.
    - Copy its credentials to `COURIER_CLIENT_ID` / `COURIER_CLIENT_SECRET`.
 5. **Google with Token Vault** (Authentication > Social > Google / Gmail):
    - In Google Cloud: create an OAuth client (Web), add Auth0's callback
@@ -199,14 +197,13 @@ Do these steps in the Auth0 Dashboard, in order:
      `https://www.googleapis.com/auth/gmail.send`. Turn on **Offline Access**
      and **Token Vault** (Connected Accounts / "Use for Token Vault").
    - Enable the connection for `Ghost Bills Web`.
-6. **Phone approval (CIBA + Guardian)**:
-   - Security > Multi-factor Auth: enable **Push Notification using Auth0 Guardian**.
-   - On the approval client (Courier or `Ghost Bills Approvals`), set the CIBA
-     notification channel to **push**.
-   - Install the **Auth0 Guardian** app on your phone and enroll your user
-     (log in once with MFA, or enroll under User Management > Users).
-7. Copy `.env.example` to `.env`, fill in the values, and restart with
+6. Copy `.env.example` to `.env`, fill in the values, and restart with
    `uv run python -m scripts.dev`. **Log in** appears in the header.
+
+**Why not CIBA or MFA?** Phone approval through CIBA needs an Enterprise plan or
+the AI Agents add-on, and MFA needs a Professional or Enterprise plan. So on the
+Free plan, Ghost Bills asks you to confirm each send with a fresh login
+(`max_age=0`, `prompt=login`) instead.
 
 ## Limits
 

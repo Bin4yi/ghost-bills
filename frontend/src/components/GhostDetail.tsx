@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { Ghost, Status } from '../api'
+import type { CourierJob, Ghost, Status } from '../api'
 import { money } from '../format'
 import { GHOST_ART, Mascot } from '../Mascot'
 import { SendWithGmail } from './SendWithGmail'
@@ -30,9 +30,16 @@ interface Props {
   onStatus: (id: string, status: Status) => void
   canSend?: boolean
   onSendDone?: () => void
+  sendResult?: CourierJob | null
 }
 
-export function GhostDetail({ ghost, onStatus, canSend = false, onSendDone = () => {} }: Props) {
+export function GhostDetail({
+  ghost,
+  onStatus,
+  canSend = false,
+  onSendDone = () => {},
+  sendResult = null,
+}: Props) {
   const [copied, setCopied] = useState(false)
   if (!ghost) {
     return <aside className="card detail muted">Pick a ghost to see the proof.</aside>
@@ -101,7 +108,7 @@ export function GhostDetail({ ghost, onStatus, canSend = false, onSendDone = () 
             Find the cancel option in your account settings, or send this email to the company's
             support address.{' '}
             {canSend
-              ? 'Ghost Bills never sends anything on its own: Courier sends only after you approve on your phone.'
+              ? 'Ghost Bills never sends anything on its own: Courier sends only after you confirm it by logging in again.'
               : 'Ghost Bills never sends anything for you.'}
           </p>
           <div className="row">
@@ -109,7 +116,7 @@ export function GhostDetail({ ghost, onStatus, canSend = false, onSendDone = () 
               {copied ? 'Copied ✓' : 'Copy email'}
             </button>
           </div>
-          {canSend && <SendWithGmail ghost={ghost} onDone={onSendDone} />}
+          {canSend && <SendWithGmail ghost={ghost} onDone={onSendDone} returned={sendResult} />}
         </>
       )}
 
