@@ -177,6 +177,10 @@ Do these steps in the Auth0 Dashboard, in order:
    - Allowed Logout URLs: `http://localhost:5173`
    - Allowed Web Origins: `http://localhost:5173`
    - Copy its Client ID and Secret to `AUTH0_CLIENT_ID` / `AUTH0_CLIENT_SECRET`.
+   - Let it get your login token: Applications > APIs > `Ghost Bills Login` >
+     **Application Access** > `Ghost Bills Web` > Edit > **User-Delegated Access** >
+     **Grant Access** > Save. (APIs set to "Per-app authorization" refuse apps
+     without this grant: "Client ... is not authorized to access resource server".)
 3. **Penny** (Applications > APIs > `Ghost Bills Login` > Add Application, which
    creates a Custom API Client with the same identifier):
    - Name it `Penny`. Under API Access, edit `Ghost Bills Ledger` and grant
