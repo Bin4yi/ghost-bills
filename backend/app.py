@@ -264,7 +264,13 @@ async def agent_tokens(request: Request, response: Response,
                        caller: Caller = Depends(local_ui_only)) -> dict:
     """'Who can do what right now': decoded claims only, never a token."""
     user = await web.current_user(request, response)
-    return runtime(request).tokens.inspector(user.get("sub") if user else None)
+    rt = runtime(request)
+    view = rt.tokens.inspector(user.get("sub") if user else None)
+    names = {rt.settings.penny_client_id: "Penny", rt.settings.courier_client_id: "Courier"}
+    for who in ("penny", "courier"):
+        if view.get(who):
+            view[who]["chain_names"] = [names.get(c, c) for c in view[who].get("chain", [])]
+    return view
 
 
 class CategoryBody(BaseModel):

@@ -1,5 +1,5 @@
 export type GhostType = 'poltergeist' | 'sleepy' | 'shapeshifter' | 'twins'
-export type Status = 'active' | 'kept' | 'cancelled'
+export type Status = 'active' | 'kept' | 'cancelled' | 'cancel_requested'
 
 export interface Ghost {
   id: string
@@ -108,6 +108,49 @@ export interface Me {
   agents_ready?: boolean
 }
 
+export interface CourierJob {
+  request_id: string
+  ghost_id: string
+  state: 'waiting' | 'asking_phone' | 'sent' | 'denied' | 'timeout' | 'refused' | 'stopped' | 'error'
+  message: string
+  recipient_domain: string | null
+}
+
+/** Decoded claims only. The server never sends a raw token. */
+export interface TokenView {
+  sub: string
+  act: Record<string, unknown> | null
+  scope: string
+  aud: string | string[]
+  exp: number
+  chain: string[]
+  chain_names?: string[]
+}
+
+export interface AgentTokens {
+  stopped: boolean
+  penny: TokenView | null
+  courier: TokenView | null
+}
+
+export interface AuditRow {
+  request_id: string
+  asked_by: string
+  acted_by: string
+  on_behalf_of: string
+  ghost_id: string
+  recipient_domain: string | null
+  scope: string | null
+  chain: string | null
+  requested_at: string
+  approved_at: string | null
+  outcome: string | null
+  outcome_at: string | null
+  sent_at: string | null
+  gmail_message_id: string | null
+  note: string | null
+}
+
 export interface AskResult {
   text: string
   tools_used: { tool: string; args: Record<string, unknown> }[]
@@ -143,6 +186,12 @@ export const api = {
   config: () => call<Record<string, unknown>>('/api/config'),
   llmStatus: () => call<LlmStatus>('/api/llm/status'),
   me: () => call<Me>('/api/me'),
+  cancelRequest: (ghostId: string, to_address: string) =>
+    post<CourierJob>(`/api/ghosts/${enc(ghostId)}/cancel-request`, { to_address }),
+  courierStatus: (requestId: string) => call<CourierJob>(`/api/courier/status/${enc(requestId)}`),
+  agentTokens: () => call<AgentTokens>('/api/agents/tokens'),
+  stopAgents: () => post<{ stopped: boolean }>('/api/agents/stop'),
+  audit: () => call<AuditRow[]>('/api/audit'),
   enrich: () => post<{ enriched: number; seconds: number[] }>('/api/enrich'),
   answer: (id: string, choice: 'a' | 'b' | null) =>
     post(`/api/questions/${enc(id)}/answer`, { choice }),

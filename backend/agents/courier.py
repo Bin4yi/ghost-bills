@@ -203,9 +203,9 @@ class Courier:
                              time.time() + MAX_SEND_TOKEN_SECONDS)
             chain = get_delegation_chain(claims)
             audit.update(job.request_id, chain=(
-                "you -> Penny -> Courier (in the token's act claim)"
+                "you → Penny → Courier (in the token's act claim)"
                 if s.penny_client_id in chain else
-                "you -> Penny -> Courier (recorded here; the token names only Courier)"))
+                "you → Penny → Courier (recorded here; the token names only Courier)"))
             rt.tokens.put_courier(job.request_id, Held(result["access_token"], claims, expires_at))
             # Courier presents its token at the guarded send route, like any other caller.
             transport = httpx.ASGITransport(app=self.app)

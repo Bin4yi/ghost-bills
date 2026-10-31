@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { api, type GhostType, type LlmStatus, type Me, type Question, type Scan, type Series, type Status } from './api'
+import { AgentPanel } from './components/AgentPanel'
 import { AskPenny } from './components/AskPenny'
 import { BigNumber } from './components/BigNumber'
 import { GhostDetail } from './components/GhostDetail'
@@ -20,6 +21,7 @@ export default function App() {
   const [questions, setQuestions] = useState<Question[]>([])
   const [llm, setLlm] = useState<LlmStatus | null>(null)
   const [me, setMe] = useState<Me | null>(null)
+  const [agentRefresh, setAgentRefresh] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [filter, setFilter] = useState<GhostType | null>(null)
   const [selected, setSelected] = useState<string | null>(null)
@@ -77,6 +79,13 @@ export default function App() {
   const current = live.find((g) => g.id === selected) ?? shown[0] ?? null
   const buried = (scan?.ghosts ?? []).filter((g) => g.status === 'cancelled')
   const counted = live.filter((g) => !g.waiting && g.status === 'active')
+
+  // Sending needs a login and both agent clients; logged out, the app stays fully local.
+  const agentsOn = !!(me?.auth_enabled && me.logged_in && me.agents_ready)
+  const onSendDone = useCallback(() => {
+    setAgentRefresh((n) => n + 1)
+    refresh()
+  }, [refresh])
 
   const setStatus = async (id: string, status: Status) => {
     await api.setStatus(id, status)
@@ -150,7 +159,12 @@ export default function App() {
                 }
               }}
             />
-            <GhostDetail ghost={current} onStatus={setStatus} />
+            <GhostDetail
+              ghost={current}
+              onStatus={setStatus}
+              canSend={agentsOn}
+              onSendDone={onSendDone}
+            />
           </div>
 
           <div className="split">
@@ -163,6 +177,17 @@ export default function App() {
             <AskPenny llmOk={!!llm?.ok} />
           </div>
 
+          {agentsOn && (
+            <AgentPanel
+              refreshKey={agentRefresh}
+              ghostNames={Object.fromEntries(scan.ghosts.map((g) => [g.id, g.display_name]))}
+            />
+          )}
+          {me?.auth_enabled && !me.logged_in && (
+            <p className="card login-line">
+              Log in to let Penny send emails for you. Everything else works offline.
+            </p>
+          )}
           <HowWeDecide />
           <Graveyard
             ghosts={buried}

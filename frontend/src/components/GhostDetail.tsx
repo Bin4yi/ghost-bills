@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { Ghost, Status } from '../api'
 import { money } from '../format'
 import { GHOST_ART, Mascot } from '../Mascot'
+import { SendWithGmail } from './SendWithGmail'
 import { TypePill } from './TypePill'
 
 // Amounts and dates in a proof line, so they can be set in the ledger's typewriter face.
@@ -27,9 +28,11 @@ function Figures({ text }: { text: string }) {
 interface Props {
   ghost: Ghost | null
   onStatus: (id: string, status: Status) => void
+  canSend?: boolean
+  onSendDone?: () => void
 }
 
-export function GhostDetail({ ghost, onStatus }: Props) {
+export function GhostDetail({ ghost, onStatus, canSend = false, onSendDone = () => {} }: Props) {
   const [copied, setCopied] = useState(false)
   if (!ghost) {
     return <aside className="card detail muted">Pick a ghost to see the proof.</aside>
@@ -96,13 +99,17 @@ export function GhostDetail({ ghost, onStatus }: Props) {
           </div>
           <p className="muted small">
             Find the cancel option in your account settings, or send this email to the company's
-            support address. Ghost Bills never sends anything for you.
+            support address.{' '}
+            {canSend
+              ? 'Ghost Bills never sends anything on its own: Courier sends only after you approve on your phone.'
+              : 'Ghost Bills never sends anything for you.'}
           </p>
           <div className="row">
             <button className="btn btn-secondary" onClick={copy}>
               {copied ? 'Copied ✓' : 'Copy email'}
             </button>
           </div>
+          {canSend && <SendWithGmail ghost={ghost} onDone={onSendDone} />}
         </>
       )}
 
