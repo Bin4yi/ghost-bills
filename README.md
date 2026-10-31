@@ -141,8 +141,49 @@ question. Ghost Bills never downloads or guesses exchange rates.
 ## Privacy
 
 Everything runs on your laptop: FastAPI, SQLite (`ghost_bills.db`), Ollama and the
-web page. Nothing is uploaded. The app never sends email, never opens links and
-never contacts any company. Fonts and pictures are bundled, so it works offline.
+web page. Nothing is uploaded. Logged out, the app never sends email, never opens
+links and never contacts any company. Fonts and pictures are bundled, so it works
+offline. If you log in and turn on "Send with Gmail", the only thing that leaves
+your laptop is one cancel email you approved. Bank data never does.
+
+## Sending with Gmail: three agents, three locks
+
+![How the pieces fit: your laptop, Auth0 and Google](docs/images/auth0-map.jpg)
+
+Three agents share the work. **Penny** chats and plans. **Ledger** reads your
+statement and never goes online. **Courier** is the only one that can send.
+
+**Delegation with token exchange.** Penny never uses your login token. She trades
+it at Auth0 for her own (On-Behalf-Of token exchange, RFC 8693): acting for you,
+`read:ghosts` only, 5 minutes. To send, Courier trades Penny's token for one with
+`send:cancel_email`, and Auth0 records the chain in the `act` claim:
+you → Penny → Courier.
+
+![Token exchange: each agent gets its own token](docs/images/auth0-exchange.jpg)
+
+**Three locks.**
+
+1. Penny can only read. Her `request_send(ghost_id)` tool has no address field, so
+   the model can never pick the recipient.
+2. Only Courier's token reaches the send route. Penny's token, or your own, gets 403.
+3. Nothing is sent until you confirm by logging in again (`max_age=0`,
+   `prompt=login`, PKCE, nonce; same user, login within 2 minutes, one-time).
+
+![Three locks](docs/images/auth0-locks.jpg)
+
+**Token Vault.** After you confirm, Auth0 Token Vault gives Courier a short Google
+token that can only send email. Gmail sends one email and the token is thrown away.
+No Google token is ever stored by Ghost Bills.
+
+![After you confirm: Token Vault to Gmail](docs/images/auth0-vault.jpg)
+
+![One cancel email, step by step](docs/images/auth0-sequence.jpg)
+
+The **Who can do what right now** panel shows each agent's token as decoded facts
+(never the token itself), **Stop all agents** drops every token at once, and
+**What Penny did** lists every send request and its outcome.
+
+![Token inspector and audit timeline](docs/images/agents-panel.jpg)
 
 ## Auth0 setup (optional: only for "Send with Gmail")
 

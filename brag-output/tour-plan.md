@@ -1,43 +1,61 @@
-# Ghost Bills: tour video plan
+# Ghost Bills: tour video plan (v3, animated Auth0 diagrams)
 
-**Goal:** teach a new user what Ghost Bills does, why it exists and how to use it, end to end,
-in plain words. Length 3:28 (the request asked for a maximum of 3–4 minutes).
+**Goal:** teach a new user what Ghost Bills does, why it exists, how to use it,
+and how the agents send an email safely with Auth0. Plain words, 3:29 long.
 
-**Voice:** Kokoro (`af_heart`, speed 0.95), open-source text-to-speech running locally via
-`kokoro-onnx`. The request asked for Ollama's `phonon`, but phonon needs Apple Silicon (MLX)
-and does not run on this Windows laptop, so Kokoro was picked as the local, open-model
-stand-in. The narration lines are in `work/script.json`, so they can be re-voiced with phonon on a Mac
-(`ollama run phonon "<line>" > <id>.wav`, one file per line) without changing anything else.
+**Voice:** Kokoro (`af_heart`, speed 0.95), open-source text-to-speech running
+locally (Ollama's `phonon` needs Apple Silicon, so it can't run on this Windows
+laptop). The narration lines are in `work/script.json`.
 
-**Visuals:** the real app, recorded in headless Chrome from a copy of the demo data
-(`work/rec.mjs`): home, import dialog with the real `demo.csv`, Moonbeam Music detail, the
-answered exchange-rate question, the graveyard after "I cancelled it", a real Ask Penny answer
-from Gemma 3 4B, and séance mode. A camera glides to whatever the voice is talking about, with
-a pumpkin spotlight, a cursor that does the clicks, a step label, subtitles and a progress
-bar. Halloween frame: night background, moon, bats, pumpkins, the app's séance candles and
-the graveyard strip from the art set.
+**Visuals:**
+- The real app, recorded in headless Chrome from demo data (`work/rec.mjs`).
+- The logged-in agent screens (Send with Gmail, "Confirm by logging in again",
+  the token inspector and the "What Penny did" timeline) recorded from the real
+  UI against a test tenant (`work/rec_agents.mjs`, fake Auth0, demo data).
+- Four colorful animated diagrams (one color per actor: you mint, Penny orange,
+  Courier coral, Auth0 violet, Google blue):
+  - How the pieces fit: laptop / Auth0 / Google zones, arrows draw on.
+  - Delegation: passes fly You → Auth0 → Penny → Auth0 → Courier, each pass
+    shows its claims, then the chain you → Penny → Courier.
+  - Three locks: padlocks click shut one by one.
+  - After you confirm: a Google token flies from Token Vault to Courier to Gmail,
+    one email reaches the company, the token is thrown away.
+- A camera that glides to what the voice explains, a spotlight, cursor clicks,
+  step labels, subtitles and a progress bar, in a Halloween night frame.
 
-**Story (34 lines):**
+**Story (32 lines):**
+1. What it is, and why: forgotten subscriptions add up; everything runs on your laptop.
+2. Step 1: import a CSV. Step 2: code finds the 4 kinds of ghost and the total.
+3. Step 3: open a ghost, see the proof (code, not AI); Gemma explains; Penny asks when unsure.
+4. Step 4: Ghost Bills writes the cancel email.
+5. **Auth0 section:**
+   - Three agents: Penny (chat and plans, read-only), Ledger (local, never online),
+     Courier (the only one that can send).
+   - Token exchange: your login token → Penny's token (act: Penny, read:ghosts,
+     5 minutes) → Courier's token (act: Courier ← Penny, send:cancel_email, 5 minutes).
+   - Three locks: Penny can only read; only Courier's token reaches the send step;
+     you confirm each send with a fresh login (one-time, 2 minutes).
+   - Send with Gmail and "Confirm by logging in again", in the real UI.
+   - Token Vault → a short Google token (gmail.send only) → Gmail sends one email
+     → the token is thrown away. Leaves the laptop: only that email.
+   - The token inspector, Stop all agents, and the "What Penny did" timeline.
+6. Laid to rest; wrap-up.
 
-1. What it is: finds the subscriptions you forgot ("ghosts").
-2. Why: small charges add up; many apps want your bank login, Ghost Bills does not; it all
-   runs on your laptop, even the AI.
-3. Setup: `ollama pull gemma3:4b`, `uv sync`, `uv run python -m scripts.dev`, open the app.
-4. Step 1: import a CSV; the columns are found for you.
-5. Step 2: code finds the 4 kinds of ghost (Poltergeist, Sleepy Ghost, Shapeshifter, Twin
-   Ghosts) and the yearly total; normal shopping isn't flagged.
-6. Step 3: open a ghost; the proof is from your statement, found by code, not AI.
-7. Step 4: Gemma explains in simple words; a checker blocks invented numbers or links;
-   Penny asks when unsure and remembers the answer.
-8. Step 5: copy the cancel email, send it yourself (the app never sends anything), click
-   "I cancelled it", and see the graveyard and Saved so far.
-9. Extras: upcoming charges, Ask Penny, séance mode.
-10. Outro: code finds, AI explains, you decide.
+**YouTube chapters (every chapter is at least 10 seconds):**
 
-**Audio:** voice track plus a quiet D-minor music box, pad and wind, ducked under the voice;
-the mix is at −16 LUFS.
+```
+0:00 What is Ghost Bills?
+0:10 Why I made it
+0:22 Step 1: Import your bank CSV
+0:35 Step 2: Code finds the 4 kinds of ghost
+1:07 Step 3: Proof, Gemma and the cancel email
+1:32 How the pieces fit: Penny, Ledger, Courier
+1:50 Delegation with Auth0 token exchange
+2:19 Three locks
+2:29 Confirm by logging in again, Token Vault
+2:55 Token inspector, Stop all agents, audit log
+3:11 Laid to rest, and wrap-up
+```
 
-**Fixes made to the app while preparing this** (found while recording, all with tests):
-cancel emails must be written by the user ("Please cancel my…"); Gemma's names only use the
-merchant's own words; twin ghosts keep both names; Ask Penny fills in a category the small
-model forgot ("how much on music?").
+**Audio:** voice track plus a quiet D-minor music box, pad and wind, ducked
+under the voice; the mix is at −16 LUFS.

@@ -1,135 +1,127 @@
 1
-00:00:00,800 --> 00:00:03,895
-This is Ghost Bills. Here is a three minute tour.
+00:00:00,800 --> 00:00:03,339
+This is Ghost Bills. Here is a short tour.
 
 2
-00:00:04,045 --> 00:00:10,446
+00:00:03,789 --> 00:00:09,890
 Ghost Bills reads your bank statement and finds the subscriptions you forgot about. We call them ghosts.
 
 3
-00:00:10,596 --> 00:00:18,235
-Why did we make it? Small subscriptions are easy to forget. A few dollars a month can add up to hundreds of dollars a year.
+00:00:10,340 --> 00:00:16,868
+Why? Small subscriptions are easy to forget. A few dollars a month can add up to hundreds of dollars a year.
 
 4
-00:00:18,385 --> 00:00:22,781
-Many apps that find them want your bank login. Ghost Bills does not.
-
-5
-00:00:22,931 --> 00:00:28,458
+00:00:17,318 --> 00:00:22,545
 Everything runs on your own laptop, even the AI. Your bank data never leaves it.
 
+5
+00:00:22,995 --> 00:00:27,902
+Step one. Download a CSV file from your bank, and click Import statement.
+
 6
-00:00:28,608 --> 00:00:36,183
-To start, install Ollama and download the Gemma model. Then run one command, and open the app in your browser.
+00:00:28,702 --> 00:00:34,654
+Ghost Bills finds the date, description and amount columns for you. Check them, then click Import.
 
 7
-00:00:36,333 --> 00:00:42,649
-Penny, the black cat, is your guide. The app comes with a sample statement, so you can try it right away.
+00:00:35,454 --> 00:00:41,022
+Step two. Plain code finds charges that repeat, and checks them with four simple rules.
 
 8
-00:00:42,799 --> 00:00:48,710
-Step one. Download a CSV file from your bank's website. Then click Import statement.
+00:00:41,472 --> 00:00:48,107
+A Poltergeist is a price that went up. Moonbeam Music went from $9.99 to $12.99.
 
 9
-00:00:49,210 --> 00:00:53,435
-Ghost Bills finds the date, description and amount columns for you.
+00:00:48,557 --> 00:00:52,120
+A Sleepy Ghost is a yearly plan that will charge you soon.
 
 10
-00:00:53,585 --> 00:00:58,877
-Check the first rows, then click Import. If your dates are unclear, Penny will ask you.
-
-11
-00:00:59,377 --> 00:01:05,373
-Step two. Ghost Bills looks for charges that repeat, and checks them with four simple rules.
-
-12
-00:01:05,523 --> 00:01:12,906
-A Poltergeist is a price that went up. Moonbeam Music went from $9.99 to $12.99 a month.
-
-13
-00:01:13,056 --> 00:01:21,185
-A Sleepy Ghost is a yearly plan that will charge you soon. CloudCrate will take $119.00 in 9 days.
-
-14
-00:01:21,335 --> 00:01:25,198
+00:00:52,570 --> 00:00:56,133
 A Shapeshifter is a free trial that turned into a paid plan.
 
-15
-00:01:25,348 --> 00:01:30,235
-Twin Ghosts are two subscriptions that do the same job, like two music apps.
+11
+00:00:56,583 --> 00:01:00,018
+Twin Ghosts are two subscriptions that do the same job.
 
-16
-00:01:30,385 --> 00:01:38,322
-At the top, you see what all your ghosts cost you each year. Here, it is $466.76.
+12
+00:01:00,468 --> 00:01:07,337
+At the top, you see what your ghosts cost you each year. Here, $466.76.
 
-17
-00:01:38,472 --> 00:01:44,233
-Normal shopping, rent, and tiny price changes are not flagged. The rules are careful.
-
-18
-00:01:44,383 --> 00:01:46,987
+13
+00:01:07,787 --> 00:01:10,091
 Step three. Click a ghost to see the proof.
 
+14
+00:01:10,891 --> 00:01:15,563
+These numbers come straight from your own statement. Code finds them, not AI.
+
+15
+00:01:16,013 --> 00:01:23,693
+Gemma, an open AI model running on your laptop, explains why it matters. A checker blocks any number it makes up.
+
+16
+00:01:24,143 --> 00:01:27,962
+When Ghost Bills is not sure, Penny asks you, instead of guessing.
+
+17
+00:01:28,412 --> 00:01:31,911
+Step four. Ghost Bills writes a short cancel email for you.
+
+18
+00:01:32,361 --> 00:01:38,825
+Now the new part. Penny can send that email for you, from your own Gmail. Here is how that stays safe.
+
 19
-00:01:47,487 --> 00:01:54,443
-These numbers come straight from your own statement. Plain code finds them, not AI, so you can check every one.
+00:01:39,275 --> 00:01:49,622
+Three agents share the work. Penny chats and plans. Ledger reads your statement on this laptop, and never goes online. Courier is the only one allowed to send.
 
 20
-00:01:54,593 --> 00:02:03,682
-Below, Gemma explains why it matters, in simple words. Gemma is an open AI model that runs on your laptop, inside Ollama.
+00:01:50,072 --> 00:01:59,587
+It starts with Auth0. You log in, and Auth0 gives you a token. A token is a signed pass. It says who you are, and what its holder may do.
 
 21
-00:02:03,832 --> 00:02:12,985
-Gemma never does the math. A checker blocks any number, date or link that is not in the proof. If Gemma is off, you get simple template text.
+00:02:00,037 --> 00:02:09,509
+Penny never uses your pass. She trades it at Auth0 for her own, with token exchange. Her pass says: acting for you, read only, for five minutes.
 
 22
-00:02:13,135 --> 00:02:18,043
-Step four. When Ghost Bills is not sure, Penny asks you, instead of guessing.
+00:02:09,959 --> 00:02:19,090
+To send, Courier trades Penny's pass for a send pass. Auth0 adds Courier to the chain, so the pass reads: you, then Penny, then Courier.
 
 23
-00:02:18,193 --> 00:02:26,728
-Here, a VPN price went up a little. It is billed in another currency, so it might just be the exchange rate. You choose the answer.
+00:02:19,540 --> 00:02:29,204
+So there are three locks. Penny can only read. Only Courier's pass reaches the send step. And nothing is sent until you confirm, by logging in again.
 
 24
-00:02:27,228 --> 00:02:30,515
-Penny remembers your answer, so she never asks twice.
+00:02:29,654 --> 00:02:37,569
+Here is how it looks. Type the company's address, and press Ask for approval. Then confirm by logging in again, within two minutes.
 
 25
-00:02:30,665 --> 00:02:36,490
-Step five. You decide what to cancel. Ghost Bills writes a short cancel email for you.
+00:02:38,019 --> 00:02:49,134
+After you confirm, Auth0 Token Vault gives Courier a short Google token that can only send email. Gmail sends one email, and the token is thrown away.
 
 26
-00:02:36,640 --> 00:02:46,220
-Click Copy email, then send it to the company yourself, or use the cancel option in your account settings. Ghost Bills never sends anything for you.
+00:02:49,584 --> 00:02:54,960
+So the only thing that leaves your laptop is that one email. Your bank data never does.
 
 27
-00:02:46,720 --> 00:02:49,431
-When you have cancelled it, click I cancelled it.
+00:02:55,410 --> 00:03:05,159
+Who can do what right now shows each agent's token, as readable facts, never the token itself. Courier only holds one for the seconds it takes to send.
 
 28
-00:02:49,931 --> 00:02:55,778
-The ghost moves to the graveyard, and Saved so far goes up. Changed your mind? Click Undo.
+00:03:05,609 --> 00:03:08,062
+Stop all agents ends everything at once.
 
 29
-00:02:55,928 --> 00:03:01,028
-Upcoming charges shows what will be taken from your account in the next 30 days.
+00:03:08,512 --> 00:03:11,499
+And What Penny did lists every step, so you can check it.
 
 30
-00:03:01,178 --> 00:03:09,862
-You can also ask Penny questions, like how much do I spend on music? Penny looks it up with read-only tools, and code does the math.
+00:03:11,949 --> 00:03:16,770
+When the company confirms, click I cancelled it, and the ghost moves to the graveyard.
 
 31
-00:03:10,012 --> 00:03:12,701
-And just for fun, click Start the séance.
+00:03:17,220 --> 00:03:26,287
+Your bank data never leaves your laptop. Only the one email you approved does. Code finds the ghosts. AI explains them. You decide.
 
 32
-00:03:13,201 --> 00:03:17,533
-Penny shows your ghosts one by one, biggest first, by candlelight.
-
-33
-00:03:17,683 --> 00:03:22,890
-That is Ghost Bills. Code finds the ghosts. AI explains them. You decide.
-
-34
-00:03:23,040 --> 00:03:26,497
-Your bank data stays on your laptop. Happy haunting!
+00:03:26,737 --> 00:03:27,804
+Happy haunting!
