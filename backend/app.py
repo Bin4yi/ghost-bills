@@ -4,14 +4,22 @@ from __future__ import annotations
 
 from typing import Literal
 
-from fastapi import FastAPI, File, HTTPException, Request, Response, UploadFile
+from fastapi import Depends, FastAPI, File, HTTPException, Request, Response, UploadFile
+from starlette.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from backend import db, settings
 from backend.agent import graph
+from backend.agents import penny
+from backend.agents.ledger import snapshot
+from backend.agents.runtime import build as build_agents
+from backend.agents.runtime import runtime
+from backend.agents.vault import AgentsStopped
 from backend.auth import web
 from backend.auth.config import load_settings
+from backend.auth.guards import Caller, agent_or_local, local_ui_only
+from backend.auth.tokens import TokenError, install_log_redaction
 from backend.detect import config
 from backend.detect.scan import run_scan
 from backend.importer import csv_import, service
@@ -26,7 +34,23 @@ app.add_middleware(
     allow_headers=["*"],
 )
 # Optional Auth0 login. Without settings nothing is mounted and the app stays local-only.
-web.install(app, load_settings())
+AUTH = load_settings()
+web.install(app, AUTH)
+app.state.agents = build_agents(AUTH)
+install_log_redaction()
+
+
+@app.middleware("http")
+async def agent_session_hooks(request: Request, call_next):
+    """A fresh login wakes stopped agents. Logging out drops every agent token."""
+    response = await call_next(request)
+    path = request.url.path
+    if path == "/auth/callback" and response.status_code < 400:
+        runtime(request).tokens.resume()
+    elif path == "/auth/logout":
+        runtime(request).tokens.penny.clear()
+        runtime(request).tokens.courier.clear()
+    return response
 
 
 @app.get("/api/health")
@@ -121,9 +145,50 @@ class AskBody(BaseModel):
 
 
 @app.post("/api/ask")
-def ask_route(body: AskBody) -> dict:
-    """Ask Penny. Read-only: the agent can look, never change or send anything."""
-    return graph.ask(body.question[:500])
+async def ask_route(body: AskBody, request: Request, response: Response,
+                    caller: Caller = Depends(agent_or_local("read:ghosts"))) -> dict:
+    """Ask Penny. Logged out: she reads the local ledger directly (offline mode).
+    Logged in with agents set up: she gets her own read-only token (Lock 1) and
+    reads the ledger through the API with it."""
+    question = body.question[:500]
+    rt = runtime(request)
+    user = await web.current_user(request, response) if caller.kind == "local" else None
+    if user and rt.settings.agents_ready:
+        try:
+            held = await penny.penny_token(rt, user["sub"], await web.user_access_token(request, response))
+            ctx = await penny.ledger_context(request.app, held.token)
+        except AgentsStopped:
+            return {"text": "Penny is stopped. Log in again to wake her up.", "tools_used": []}
+        except TokenError as err:
+            raise HTTPException(err.status, err.message) from err
+        return await run_in_threadpool(graph.ask, question, ctx=ctx)
+    return await run_in_threadpool(graph.ask, question)
+
+
+@app.get("/api/agent/ledger")
+def agent_ledger(caller: Caller = Depends(agent_or_local("read:ghosts"))) -> dict:
+    """Ledger's read-only view, for Penny's tools (needs read:ghosts)."""
+    return snapshot()
+
+
+@app.get("/api/ghosts")
+def ghosts_route(caller: Caller = Depends(agent_or_local("read:ghosts"))) -> list[dict]:
+    return _dump(run_scan().ghosts)
+
+
+@app.post("/api/agents/stop")
+def stop_agents(request: Request, caller: Caller = Depends(local_ui_only)) -> dict:
+    """Clear every agent token and block new exchanges until the next login."""
+    runtime(request).tokens.stop()
+    return {"stopped": True}
+
+
+@app.get("/api/agents/tokens")
+async def agent_tokens(request: Request, response: Response,
+                       caller: Caller = Depends(local_ui_only)) -> dict:
+    """'Who can do what right now': decoded claims only, never a token."""
+    user = await web.current_user(request, response)
+    return runtime(request).tokens.inspector(user.get("sub") if user else None)
 
 
 class CategoryBody(BaseModel):
@@ -174,7 +239,7 @@ class StatusBody(BaseModel):
 
 
 @app.post("/api/ghosts/{gid:path}/status")
-def status_route(gid: str, body: StatusBody) -> dict:
+def status_route(gid: str, body: StatusBody, caller: Caller = Depends(local_ui_only)) -> dict:
     if body.status == "active":
         db.delete("ghost_status", "ghost_id", gid)
     else:
