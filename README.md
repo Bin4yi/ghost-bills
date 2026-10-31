@@ -144,6 +144,68 @@ Everything runs on your laptop: FastAPI, SQLite (`ghost_bills.db`), Ollama and t
 web page. Nothing is uploaded. The app never sends email, never opens links and
 never contacts any company. Fonts and pictures are bundled, so it works offline.
 
+## Auth0 setup (optional: only for "Send with Gmail")
+
+Without Auth0, Ghost Bills runs fully local and offline. Set it up only if you
+want Penny to send an approved cancel email from your own Gmail. The details and
+sources are in [docs/auth0-notes.md](docs/auth0-notes.md).
+
+> **Plan note:** login, Penny's read-only token and Token Vault work on the
+> Free plan. The phone approval (CIBA, "Lock 3") needs a paid plan with the
+> **AI Agents add-on**, or Enterprise.
+
+Auth0's On-Behalf-Of exchange needs one API per hop, and each agent is a
+**Custom API Client** tied to the API whose token it receives:
+
+```
+user login token (aud: /login) --Penny--> token (aud: /ledger, read:ghosts)
+                                --Courier--> token (aud: /courier, send:cancel_email)
+```
+
+Do these steps in the Auth0 Dashboard, in order:
+
+1. **APIs** (Applications > APIs > Create API), three of them:
+   - `Ghost Bills Login`, identifier `https://ghost-bills.local/login`
+   - `Ghost Bills Ledger`, identifier `https://ghost-bills.local/ledger`, permission `read:ghosts`
+   - `Ghost Bills Courier`, identifier `https://ghost-bills.local/courier`, permission `send:cancel_email`
+   - On each API: Settings > **Allow Offline Access** off, token expiration short (300 seconds is enough).
+2. **Regular Web Application** `Ghost Bills Web` (Applications > Create Application):
+   - Allowed Callback URLs: `http://localhost:5173/auth/callback`
+   - Allowed Logout URLs: `http://localhost:5173`
+   - Allowed Web Origins: `http://localhost:5173`
+   - Copy its Client ID and Secret to `AUTH0_CLIENT_ID` / `AUTH0_CLIENT_SECRET`.
+3. **Penny** (Applications > APIs > `Ghost Bills Login` > Add Application, which
+   creates a Custom API Client with the same identifier):
+   - Name it `Penny`. Under API Access, edit `Ghost Bills Ledger` and grant
+     **User-Delegated Access** with `read:ghosts`.
+   - Under **Token Exchange**, turn on **On-Behalf-Of Token Exchange** and save.
+   - Copy its credentials to `PENNY_CLIENT_ID` / `PENNY_CLIENT_SECRET`.
+4. **Courier** (Applications > APIs > `Ghost Bills Ledger` > Add Application):
+   - Name it `Courier`. Under API Access, edit `Ghost Bills Courier` and grant
+     **User-Delegated Access** with `send:cancel_email`.
+   - Turn on **On-Behalf-Of Token Exchange**.
+   - Under Advanced Settings > Grant Types, turn on **Token Vault**.
+   - Turn on **Client Initiated Backchannel Authentication (CIBA)** if it's
+     offered here. If not, create a Regular Web App `Ghost Bills Approvals`
+     with the CIBA grant and use its credentials as `CIBA_CLIENT_ID` / `CIBA_CLIENT_SECRET`.
+   - Copy its credentials to `COURIER_CLIENT_ID` / `COURIER_CLIENT_SECRET`.
+5. **Google with Token Vault** (Authentication > Social > Google / Gmail):
+   - In Google Cloud: create an OAuth client (Web), add Auth0's callback
+     `https://YOUR_DOMAIN/login/callback`, enable the **Gmail API**, keep the
+     consent screen in **Testing**, and add your Gmail as a **test user**.
+   - In Auth0: paste the Google client ID and secret. Under Permissions, add
+     `https://www.googleapis.com/auth/gmail.send`. Turn on **Offline Access**
+     and **Token Vault** (Connected Accounts / "Use for Token Vault").
+   - Enable the connection for `Ghost Bills Web`.
+6. **Phone approval (CIBA + Guardian)**:
+   - Security > Multi-factor Auth: enable **Push Notification using Auth0 Guardian**.
+   - On the approval client (Courier or `Ghost Bills Approvals`), set the CIBA
+     notification channel to **push**.
+   - Install the **Auth0 Guardian** app on your phone and enroll your user
+     (log in once with MFA, or enroll under User Management > Users).
+7. Copy `.env.example` to `.env`, fill in the values, and restart with
+   `uv run python -m scripts.dev`. **Log in** appears in the header.
+
 ## Limits
 
 - CSV only (no PDF, no bank connection).
