@@ -110,7 +110,21 @@ class RedactTokens(logging.Filter):
 
 
 def install_log_redaction() -> None:
-    for name in ("", "uvicorn", "uvicorn.access", "uvicorn.error", "ghost_bills", "httpx"):
-        logger = logging.getLogger(name)
-        if not any(isinstance(f, RedactTokens) for f in logger.filters):
-            logger.addFilter(RedactTokens())
+    """Redact JWTs in every log record from every logger (filters on named loggers
+    would miss records created by their child loggers)."""
+    old = logging.getLogRecordFactory()
+    if getattr(old, "_ghost_bills_redacts", False):
+        return
+
+    def factory(*args: Any, **kwargs: Any) -> logging.LogRecord:
+        record = old(*args, **kwargs)
+        try:
+            msg = record.getMessage()
+        except Exception:
+            return record
+        if _JWT.search(msg):
+            record.msg, record.args = redact(msg), None
+        return record
+
+    factory._ghost_bills_redacts = True  # type: ignore[attr-defined]
+    logging.setLogRecordFactory(factory)

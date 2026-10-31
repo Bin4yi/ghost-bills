@@ -34,6 +34,7 @@ ROUTER_SCHEMA = {
                 "category": {"type": "string"}, "type": {"type": "string"},
                 "merchant_key": {"type": "string"}, "months": {"type": "integer"},
                 "merchant_a": {"type": "string"}, "merchant_b": {"type": "string"},
+                "ghost_id": {"type": "string"},
             },
         },
     },

@@ -75,7 +75,7 @@ class Ghost(BaseModel):
     cancel_email: CancelEmail | None = None
     fx_note: str | None = None
     waiting: bool = False  # depends on an open question
-    status: Literal["active", "kept", "cancelled"] = "active"
+    status: Literal["active", "kept", "cancelled", "cancel_requested"] = "active"
     cancelled_at: date | None = None
     text_source: Literal["gemma", "template"] | None = None
 

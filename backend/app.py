@@ -11,14 +11,15 @@ from pydantic import BaseModel
 
 from backend import db, settings
 from backend.agent import graph
-from backend.agents import penny
+from backend.agents import audit, penny
+from backend.agents.courier import Courier, valid_address
 from backend.agents.ledger import snapshot
 from backend.agents.runtime import build as build_agents
 from backend.agents.runtime import runtime
 from backend.agents.vault import AgentsStopped
 from backend.auth import web
 from backend.auth.config import load_settings
-from backend.auth.guards import Caller, agent_or_local, local_ui_only
+from backend.auth.guards import Caller, agent_or_local, courier_only, local_ui_only
 from backend.auth.tokens import TokenError, install_log_redaction
 from backend.detect import config
 from backend.detect.scan import run_scan
@@ -37,6 +38,7 @@ app.add_middleware(
 AUTH = load_settings()
 web.install(app, AUTH)
 app.state.agents = build_agents(AUTH)
+app.state.courier = Courier(app)
 install_log_redaction()
 
 
@@ -157,12 +159,24 @@ async def ask_route(body: AskBody, request: Request, response: Response,
         try:
             held = await penny.penny_token(rt, user["sub"], await web.user_access_token(request, response))
             ctx = await penny.ledger_context(request.app, held.token)
+            ctx.handoff = penny_handoff(request.app.state.courier, user["sub"], held)
         except AgentsStopped:
             return {"text": "Penny is stopped. Log in again to wake her up.", "tools_used": []}
         except TokenError as err:
             raise HTTPException(err.status, err.message) from err
         return await run_in_threadpool(graph.ask, question, ctx=ctx)
     return await run_in_threadpool(graph.ask, question)
+
+
+def penny_handoff(courier: Courier, user_sub: str, held):
+    """Penny's request_send: she can only hand a job to Courier. The address is
+    whatever YOU typed for that ghost, and your phone still has to approve."""
+    def handoff(ghost_id: str) -> dict:
+        job = courier.request_for(ghost_id, user_sub=user_sub, penny=held, asked_by="Penny")
+        if job.state == "refused":
+            return {"summary": [f"Courier said no: {job.message}"]}
+        return {"summary": ["I asked Courier. Check your phone to approve the email."]}
+    return handoff
 
 
 @app.get("/api/agent/ledger")
@@ -180,7 +194,69 @@ def ghosts_route(caller: Caller = Depends(agent_or_local("read:ghosts"))) -> lis
 def stop_agents(request: Request, caller: Caller = Depends(local_ui_only)) -> dict:
     """Clear every agent token and block new exchanges until the next login."""
     runtime(request).tokens.stop()
+    request.app.state.courier.stop_all()
     return {"stopped": True}
+
+
+# --- Courier: Locks 2 and 3 ----------------------------------------------------
+
+class CancelRequestBody(BaseModel):
+    to_address: str
+
+
+@app.post("/api/ghosts/{gid:path}/cancel-request")
+async def cancel_request(gid: str, body: CancelRequestBody, request: Request, response: Response,
+                         caller: Caller = Depends(local_ui_only)) -> dict:
+    """You typed the company's address and pressed 'Ask for approval'."""
+    rt = runtime(request)
+    user = await web.current_user(request, response)
+    if not user:
+        raise HTTPException(401, "Log in to let Penny send emails for you.")
+    if not rt.settings.agents_ready:
+        raise HTTPException(400, "Agents aren't set up yet (see README: Auth0 setup).")
+    address = body.to_address.strip()
+    if not valid_address(address):
+        raise HTTPException(400, "That doesn't look like an email address.")
+    try:
+        held = await penny.penny_token(rt, user["sub"], await web.user_access_token(request, response))
+    except AgentsStopped as err:
+        raise HTTPException(423, "Agents are stopped. Log in again to start them.") from err
+    except TokenError as err:
+        raise HTTPException(err.status, err.message) from err
+    db.put("ghost_status", "ghost_id", gid, status="cancel_requested", cancelled_at=None)
+    courier: Courier = request.app.state.courier
+    courier.remember_typed_address(gid, address)
+    job = courier.send_cancel_email(gid, address, user_sub=user["sub"], penny=held, asked_by="you")
+    return job.public()
+
+
+class CourierSendBody(BaseModel):
+    request_id: str
+
+
+@app.post("/api/courier/send")
+async def courier_send(body: CourierSendBody, request: Request,
+                       caller: Caller = Depends(courier_only)) -> dict:
+    """Lock 2: only Courier's send:cancel_email token gets past courier_only.
+    Then Lock 3 (your phone) runs inside deliver()."""
+    try:
+        return await request.app.state.courier.deliver(body.request_id, caller.claims)
+    except TokenError as err:
+        raise HTTPException(err.status, err.message) from err
+
+
+@app.get("/api/courier/status/{request_id}")
+def courier_status(request_id: str, request: Request, caller: Caller = Depends(local_ui_only)) -> dict:
+    job = request.app.state.courier.jobs.get(request_id)
+    if job is None:
+        raise HTTPException(404, "No send job with that id.")
+    return job.public()
+
+
+@app.get("/api/audit")
+def audit_route(caller: Caller = Depends(local_ui_only)) -> list[dict]:
+    """What the agents did. No tokens or email bodies are ever stored here."""
+    return audit.rows()
 
 
 @app.get("/api/agents/tokens")

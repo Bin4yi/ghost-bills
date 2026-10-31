@@ -13,33 +13,6 @@ from backend.auth import web
 from . import fake_auth0 as fa
 
 
-@pytest.fixture
-def rt():
-    """Agents set up against the fake tenant (no network)."""
-    old = app.state.agents
-    app.state.agents = runtime = fa.fake_runtime()
-    yield runtime
-    app.state.agents = old
-
-
-@pytest.fixture
-def logged_in(monkeypatch, rt):
-    async def user(request, response):
-        return {"sub": fa.USER, "name": "Test Person"}
-
-    async def token(request, response):
-        return fa.mint(aud=fa.SETTINGS.login_audience, scope="openid profile email")
-
-    monkeypatch.setattr(web, "current_user", user)
-    monkeypatch.setattr(web, "user_access_token", token)
-    return rt
-
-
-@pytest.fixture
-def demo(tmp_path):
-    seed_demo.seed(tmp_path / "demo.csv", reset=False)
-
-
 def bearer(token: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
 

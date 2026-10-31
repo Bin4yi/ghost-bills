@@ -19,6 +19,8 @@ from backend.normalize import display_name
 class Context:
     scan: ScanResult
     txs: list[Transaction]
+    # Set only when you're logged in: hands a send job to Courier. Penny never sends.
+    handoff: Callable[[str], dict[str, Any]] | None = None
 
     @property
     def today(self) -> date:
@@ -123,12 +125,24 @@ def compare(ctx: Context, merchant_a: str | None = None,
     return {"summary": lines}
 
 
+def request_send(ctx: Context, ghost_id: str | None = None) -> dict[str, Any]:
+    """Ask Courier to send a ghost's cancel email. Penny can't send, choose the address,
+    or approve: Courier checks your request, and your phone must approve."""
+    if ctx.handoff is None:
+        return {"summary": ["I can't send emails here. Log in, then use 'Send with Gmail' "
+                            "on the ghost you want to cancel."]}
+    if not ghost_id:
+        return {"summary": ["Tell me which ghost, and I'll ask Courier."]}
+    return ctx.handoff(ghost_id)
+
+
 TOOLS: dict[str, Callable[..., dict[str, Any]]] = {
     "list_subscriptions": list_subscriptions,
     "list_ghosts": list_ghosts,
     "get_charges": get_charges,
     "total_spend": total_spend,
     "compare": compare,
+    "request_send": request_send,
 }
 
 ARG_NAMES = {
@@ -137,6 +151,7 @@ ARG_NAMES = {
     "get_charges": ("merchant_key", "months"),
     "total_spend": ("category", "months"),
     "compare": ("merchant_a", "merchant_b"),
+    "request_send": ("ghost_id",),  # never an address: only the user types that
 }
 
 TOOL_HELP = """\
@@ -144,7 +159,9 @@ TOOL_HELP = """\
 - list_ghosts(type?): ghosts (poltergeist, sleepy, shapeshifter, twins), biggest money per year first.
 - get_charges(merchant_key, months?): past charges of one merchant and the next expected charge.
 - total_spend(category?, months?): money actually spent in the last N months.
-- compare(merchant_a, merchant_b): two subscriptions side by side."""
+- compare(merchant_a, merchant_b): two subscriptions side by side.
+- request_send(ghost_id): ask Courier to send that ghost's cancel email. Only works if the
+  user already pressed 'Send with Gmail' for it, and the user must approve on their phone."""
 
 
 def fill_category(ctx: Context, name: str, args: dict[str, Any], question: str) -> dict[str, Any]:

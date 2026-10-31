@@ -86,9 +86,15 @@ def test_unknown_tool_retry_then_give_up(ctx) -> None:
     assert out["tools_used"] == []
 
 
-def test_no_write_tools_exist() -> None:
+def test_no_write_tools_exist(ctx) -> None:
     bad = re.compile(r"send|email|delete|cancel|update|write|open|post|set_", re.I)
-    assert not [name for name in tools.TOOLS if bad.search(name)]
+    # The one exception: request_send only hands a job to Courier (Lock 2 + your phone).
+    assert [name for name in tools.TOOLS if bad.search(name)] == ["request_send"]
+    # On its own (no login, no Courier) it does nothing at all.
+    out = tools.run(ctx, "request_send", {"ghost_id": "sleepy:cloudcrate"})
+    assert "can't send" in out["summary"][0]
+    # And it never accepts an address, whatever the model puts in the args.
+    assert tools.ARG_NAMES["request_send"] == ("ghost_id",)
 
 
 def test_injection_stays_inside_data(ctx) -> None:

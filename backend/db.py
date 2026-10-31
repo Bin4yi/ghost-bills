@@ -63,6 +63,24 @@ CREATE TABLE IF NOT EXISTS enrich_cache (
     text_source TEXT NOT NULL,
     seconds REAL NOT NULL
 );
+-- What the agents did. No tokens and no email bodies, ever.
+CREATE TABLE IF NOT EXISTS audit (
+    request_id TEXT PRIMARY KEY,
+    asked_by TEXT NOT NULL,
+    acted_by TEXT NOT NULL,
+    on_behalf_of TEXT NOT NULL,
+    ghost_id TEXT NOT NULL,
+    recipient_domain TEXT,
+    scope TEXT,
+    chain TEXT,
+    requested_at TEXT NOT NULL,
+    approved_at TEXT,
+    outcome TEXT,
+    outcome_at TEXT,
+    sent_at TEXT,
+    gmail_message_id TEXT,
+    note TEXT
+);
 """
 
 
