@@ -54,3 +54,33 @@ def test_dotenv_reader(tmp_path, monkeypatch) -> None:
     import os
     assert os.environ["GB_TEST_A"] == "hello"
     assert os.environ["GB_TEST_B"] == "kept"  # real env wins
+
+
+def test_login_id_token_tolerates_a_slow_laptop_clock() -> None:
+    """A laptop clock a few seconds behind Auth0 must not break login."""
+    import asyncio
+    import json
+    import time
+
+    import jwt
+    import pytest
+    from cryptography.hazmat.primitives.asymmetric import rsa
+    from jwt.algorithms import RSAAlgorithm
+
+    test_app = FastAPI()
+    web.install(test_app, FAKE)
+    verify = test_app.state.auth_client.client._verify_and_decode_jwt
+    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    jwk = json.loads(RSAAlgorithm.to_jwk(key.public_key())) | {"kid": "k"}
+
+    def token(iat_ahead: int) -> str:
+        now = int(time.time())
+        return jwt.encode({"sub": "u", "aud": "web-client", "iat": now + iat_ahead,
+                           "exp": now + 600}, key, algorithm="RS256", headers={"kid": "k"})
+
+    claims = asyncio.run(verify(token(3), {"keys": [jwk]}, audience="web-client"))
+    assert claims["sub"] == "u"  # 3 s "in the future" is fine
+    with pytest.raises(jwt.ImmatureSignatureError):
+        asyncio.run(verify(token(300), {"keys": [jwk]}, audience="web-client"))
+    with pytest.raises(jwt.InvalidAudienceError):
+        asyncio.run(verify(token(0), {"keys": [jwk]}, audience="other-client"))

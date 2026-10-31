@@ -115,7 +115,7 @@ class Verifier:
             jwk = next(k for k in jwks.get("keys", []) if k.get("kid") == kid)
             return jwt.decode(id_token, jwt.PyJWK(jwk).key, algorithms=["RS256"],
                               audience=self.settings.client_id, issuer=self.settings.issuer,
-                              leeway=10, options={"require": ["exp", "iat", "sub"]})
+                              leeway=60, options={"require": ["exp", "iat", "sub"]})
         except Exception as err:
             raise TokenError(401, "The approval token is not valid.") from err
 

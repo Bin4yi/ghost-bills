@@ -38,9 +38,34 @@ def install(app: FastAPI, settings: AuthSettings) -> None:
     )
     app.state.config = config
     app.state.auth_client = AuthClient(config)
+    add_clock_leeway(app.state.auth_client.client)
     app.add_middleware(SessionMiddleware, secret_key=settings.session_secret)
     register_auth_routes(router, config)
     app.include_router(router)
+
+
+CLOCK_LEEWAY_SECONDS = 60
+
+
+def add_clock_leeway(server_client: Any, seconds: int = CLOCK_LEEWAY_SECONDS) -> None:
+    """auth0-server-python 1.0.0b20 (pinned) checks the login ID token with zero clock
+    tolerance, so a laptop clock a few seconds behind Auth0 fails every login with
+    "The token is not yet valid (iat)". This is the same check (signature, audience,
+    RS256, issuer still compared by the SDK afterwards) with the usual 60 s leeway."""
+    import jwt
+
+    async def verify_and_decode(token: str, jwks: dict, audience: str | None = None) -> dict:
+        kid = jwt.get_unverified_header(token).get("kid")
+        key = next((k for k in jwks.get("keys", []) if k.get("kid") == kid), None)
+        if key is None:
+            raise ValueError(f"No matching key found in JWKS for kid: {kid}")
+        kwargs: dict[str, Any] = {"algorithms": ["RS256"], "leeway": seconds,
+                                  "options": {"verify_signature": True, "verify_iss": False}}
+        if audience:
+            kwargs["audience"] = audience
+        return jwt.decode(token, jwt.PyJWK.from_dict(key).key, **kwargs)
+
+    server_client._verify_and_decode_jwt = verify_and_decode
 
 
 def store(request: Request, response: Response) -> dict[str, Any]:
